@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Canvas - Bootstrap 4</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" crossorigin="anonymous"></script>
     
     <style>
         .canvas-container {
@@ -18,87 +23,101 @@
             overflow: hidden;
             background-color: white;
         }
+
         canvas {
             position: absolute;
             top: 0;
             left: 0;
-            cursor: none; 
+            cursor: none;
         }
+
         #drawingCanvas {
             z-index: 10;
         }
+
         #overlayCanvas {
             z-index: 20;
-            pointer-events: none; 
+            pointer-events: none;
         }
+
         .control-button.active {
             transform: scale(1.05);
-            box-shadow: 0 0 0 3px #6366f1; 
+            box-shadow: 0 0 0 3px #6366f1;
         }
+
         .btn-icon {
             padding: 0.75rem !important;
-            line-height: 1; 
+            line-height: 1;
         }
+
         .form-control-color {
             height: 48px;
             padding: 4px;
             border: 2px solid #ccc;
         }
+
         .dropdown-toggle {
-             height: 48px;
-             display: flex;
-             align-items: center;
+            height: 48px;
+            display: flex;
+            align-items: center;
         }
     </style>
 </head>
-<body class="p-4 d-flex flex-column align-items-center min-vh-100">
 
-    <div class="w-100" style="max-width: 900px;">
-        <div class="mb-4 p-4 bg-white rounded shadow-lg">
-            <h1 class="h2 font-weight-bold text-dark mb-4 text-center">Digital Signature Pad</h1>
-            <div class="d-flex flex-wrap justify-content-center align-items-center">
-                
-                <button id="brushBtn" data-tool="brush" class="control-button tool-button active btn btn-primary btn-icon m-2" title="Brush Tool">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M14.54 13.5l-4.04 4.04a2 2 0 0 1-2.83 0L3 12.04v-3.5a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v1.5a1 1 0 0 0 1 1h1.5a1 1 0 0 0 1-1V5.5a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v1.5a1 1 0 0 0 1 1h1.5a1 1 0 0 0 1-1V3a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v1.5a1 1 0 0 0 1 1h1.5a1 1 0 0 0 1-1V5.5"/></svg>
-                </button>
-                <button id="eraserBtn" data-tool="eraser" class="control-button tool-button btn btn-danger btn-icon m-2" title="Eraser Tool">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                </button>
+<body>
+    <div class="mb-4 p-4 bg-white rounded shadow-lg">
+        <h1 class="h2 font-weight-bold text-dark mb-4 text-center">Digital Signature Pad</h1>
+        <div class="d-flex flex-wrap justify-content-center align-items-center">
+            <button id="brushBtn" data-tool="brush" class="control-button tool-button active btn btn-icon m-2" title="Brush Tool">
+                <i class="fas fa-pen"></i>
+            </button>
 
-                <div class="dropdown m-2 align-self-center">
-                    <button class="btn btn-secondary dropdown-toggle" type="button" id="tipDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Brush Tip Shape">
-                        Tip: <span id="currentTipText" class="ml-2 font-weight-bold">Round</span>
-                    </button>
-                    <div class="dropdown-menu" aria-labelledby="tipDropdown">
-                        <a class="dropdown-item" href="#" data-tip="round">
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #000; display: inline-block; margin-right: 8px;"></div>
-                            Round
-                        </a>
-                        <a class="dropdown-item" href="#" data-tip="square">
-                            <div style="width: 12px; height: 12px; background-color: #000; display: inline-block; margin-right: 8px;"></div>
-                            Square
-                        </a>
-                    </div>
+            <button id="eraserBtn" data-tool="eraser" class="control-button tool-button btn btn-icon m-2" title="Eraser Tool">
+                <i class="fas fa-eraser"></i>
+            </button>
+
+            <div class="dropdown m-2 align-self-center">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="tipDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Brush Tip Shape">
+                    Tip: <span id="currentTipText" class="ml-2 font-weight-bold">Round</span>
+                </button>
+                <div class="dropdown-menu" aria-labelledby="tipDropdown">
+                    <a class="dropdown-item" href="#" data-tip="round">
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #000; display: inline-block; margin-right: 8px;"></div>
+                        Round
+                    </a>
+                    <a class="dropdown-item" href="#" data-tip="square">
+                        <div style="width: 12px; height: 12px; background-color: #000; display: inline-block; margin-right: 8px;"></div>
+                        Square
+                    </a>
                 </div>
+            </div>
 
-                <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color m-2" style="width: 48px; cursor: pointer;" title="Brush Color">
-                
-                <input type="range" id="sizeSlider" min="2" max="50" value="10" class="custom-range align-self-center m-2" style="width: 100px; height: 48px;" title="Brush Size">
-                <span id="sizeValue" class="h5 font-weight-semibold align-self-center text-center m-2" style="min-width: 30px;">10</span>
+            <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color m-2" style="width: 48px; cursor: pointer;" title="Brush Color">
 
-                <button id="clearBtn" class="btn btn-light btn-icon text-dark m-2" title="Clear Canvas">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <input type="range" id="sizeSlider" min="2" max="50" value="10" class="custom-range align-self-center m-2" style="width: 100px; height: 48px;" title="Brush Size">
+            <span id="sizeValue" class="h5 font-weight-semibold align-self-center text-center m-2" style="min-width: 30px;">10</span>
+
+            <button id="undoBtn" class="btn btn-secondary btn-icon m-2" title="Undo" disabled>
+                <i class="fas fa-undo"></i>
+            </button>
+            
+            <button id="redoBtn" class="btn btn-secondary btn-icon m-2" title="Redo" disabled>
+                <i class="fas fa-redo"></i>
+            </button>
+
+            <button id="clearBtn" class="btn btn-light btn-icon text-dark m-2" title="Clear Canvas">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+
+            <div class="dropdown m-2 align-self-center">
+                <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Export Drawing">
+                    <i class="fas fa-download mr-2"></i> Export
                 </button>
-                
-                <div class="dropdown m-2 align-self-center">
-                    <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Export Drawing">
-                        Export
-                    </button>
-                    <div class="exportDropdown dropdown-menu" aria-labelledby="exportDropdown">
-                        <a class="dropdown-item" href="#" data-export="png_white">PNG (White Background)</a>
-                        <a class="dropdown-item" href="#" data-export="png_transparent">PNG (Transparent)</a>
-                        <a class="dropdown-item" href="#" data-export="jpeg">JPEG (White Background)</a>
-                    </div>
+                <div class="exportDropdown dropdown-menu" aria-labelledby="exportDropdown">
+                    <a class="dropdown-item" href="#" data-export="png_white">PNG (White Background)</a>
+                    <a class="dropdown-item" href="#" data-export="jpeg">JPEG (White Background)</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="#" data-export="png_transparent">PNG (Transparent)</a>
                 </div>
             </div>
         </div>
@@ -109,21 +128,21 @@
         <canvas id="overlayCanvas"></canvas>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" crossorigin="anonymous"></script>
-
     <script>
         const drawingCanvas = document.getElementById('drawingCanvas');
         const overlayCanvas = document.getElementById('overlayCanvas');
         const ctx = drawingCanvas.getContext('2d');
         const overlayCtx = overlayCanvas.getContext('2d');
         const sizeValueSpan = document.getElementById('sizeValue');
-        
+
         // Elements for tool control
         const toolButtons = document.querySelectorAll('.tool-button');
         const tipDropdownItems = document.querySelectorAll('#tipDropdown + .dropdown-menu .dropdown-item');
         const currentTipText = document.getElementById('currentTipText');
+
+        // Elements for Undo/Redo (Now correctly identified)
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
 
         // State variables
         let isDrawing = false;
@@ -134,6 +153,11 @@
         let brushColor = '#000000';
         let brushSize = 10;
 
+        // --- History State Variables for Undo/Redo ---
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY_SIZE = 30; // Limit history size to prevent memory issues
+
         /**
          * Initializes the canvas sizes to fill the container and sets up event listeners.
          */
@@ -143,11 +167,11 @@
                 const width = container.clientWidth;
                 const height = container.clientHeight;
 
-                let imgData = null; 
+                let currentHistoryState = null;
 
-                // Capture current drawing content before resizing
-                if (drawingCanvas.width > 0 && drawingCanvas.height > 0) {
-                    imgData = ctx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height);
+                // Use the history state if it exists, otherwise it will be blank
+                if (historyIndex > -1) {
+                    currentHistoryState = history[historyIndex];
                 }
 
                 // Set canvas element dimensions
@@ -156,11 +180,19 @@
                 overlayCanvas.width = width;
                 overlayCanvas.height = height;
 
-                // Restore image data
-                if (imgData) { 
-                    // This will restore the image data. Note: Resizing canvas clears it,
-                    // so we must restore the previous content.
-                    ctx.putImageData(imgData, 0, 0);
+                // Restore image data or save initial state
+                if (currentHistoryState) {
+                    // Draw the last known history state to the new canvas size
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.clearRect(0, 0, width, height); // Clear to handle aspect ratio change gracefully
+                        ctx.drawImage(img, 0, 0, width, height);
+                        updateUndoRedoButtons();
+                    };
+                    img.src = currentHistoryState;
+                } else {
+                    // Initial save of the blank canvas state
+                    saveState();
                 }
 
                 // Set initial context properties after resizing
@@ -175,6 +207,65 @@
             window.addEventListener('resize', updateCanvasDimensions);
         }
 
+        // --- History Management Functions ---
+
+        /**
+         * Saves the current canvas state (as a DataURL) to the history array.
+         */
+        function saveState() {
+            // If the index is not at the end, clear out the 'future' (redo) states
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+
+            // Get the data URL of the drawing canvas
+            const dataURL = drawingCanvas.toDataURL('image/png', 1.0);
+
+            // Add the new state
+            history.push(dataURL);
+            historyIndex++;
+
+            // Trim the history if it exceeds the max size
+            if (history.length > MAX_HISTORY_SIZE) {
+                history.shift(); // Remove the oldest state
+                historyIndex--; // Adjust the index
+            }
+
+            updateUndoRedoButtons();
+        }
+
+        /**
+         * Loads a canvas state from the history array.
+         * @param {number} index The index of the state to load.
+         */
+        function loadState(index) {
+            if (index >= 0 && index < history.length) {
+                historyIndex = index;
+                const img = new Image();
+                img.onload = () => {
+                    // Clear and draw the historical image
+                    ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                    ctx.drawImage(img, 0, 0, drawingCanvas.width, drawingCanvas.height);
+                    updateUndoRedoButtons();
+                };
+                img.src = history[historyIndex];
+            }
+        }
+
+        /**
+         * Enables/Disables the Undo/Redo buttons based on the current history index.
+         */
+        function updateUndoRedoButtons() {
+            if (undoBtn) {
+                // Can undo if the current state is not the very first (0) state.
+                undoBtn.disabled = historyIndex <= 0;
+            }
+            if (redoBtn) {
+                // Can redo if the current state is not the last state in the array.
+                redoBtn.disabled = historyIndex >= history.length - 1;
+            }
+        }
+
         /**
          * Clears the cursor drawn on the overlay canvas.
          */
@@ -187,19 +278,19 @@
          */
         function drawCursor(x, y) {
             clearCursorOverlay();
-            
+
             // Set styles for the cursor outline
             overlayCtx.strokeStyle = currentTool === 'brush' ? brushColor : 'rgba(192, 192, 192, 0.5)';
             overlayCtx.lineWidth = 2;
             overlayCtx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Semi-transparent fill
 
             const halfSize = brushSize / 2;
-            
+
             overlayCtx.beginPath();
             if (brushTip === 'round') {
                 // Round Tip Cursor: Draw a circle
                 overlayCtx.arc(x, y, halfSize, 0, Math.PI * 2);
-            } else { 
+            } else {
                 // Square Tip Cursor: Draw a rectangle
                 overlayCtx.rect(x - halfSize, y - halfSize, brushSize, brushSize);
             }
@@ -212,19 +303,19 @@
          */
         function draw(e) {
             if (!isDrawing) return;
-            
+
             const x = e.offsetX;
             const y = e.offsetY;
 
             // Use simple lineTo for round, and the stamping method for square tips 
-            const useStamping = brushTip === 'square'; 
+            const useStamping = brushTip === 'square';
 
             if (useStamping) {
                 drawStamp(x, y);
             } else {
                 drawSimpleLine(x, y);
             }
-            
+
             // Update last position
             [lastX, lastY] = [x, y];
         }
@@ -236,11 +327,11 @@
             // Set global composite operation for brush/eraser
             ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
             ctx.strokeStyle = brushColor;
-            
+
             ctx.lineWidth = brushSize;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            
+
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(x, y);
@@ -256,21 +347,21 @@
             const distance = Math.sqrt(dx * dx + dy * dy);
             // Stamping frequency: Based on size to avoid gaps
             const steps = Math.max(1, Math.ceil(distance / (brushSize * 0.5)));
-            
+
             const stepX = dx / steps;
             const stepY = dy / steps;
-            
+
             const halfSize = brushSize / 2;
 
             // Set global composite operation and fill style
             ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
             ctx.fillStyle = brushColor;
-            
+
             // Draw a series of squares along the path
             for (let i = 0; i <= steps; i++) {
                 const currentX = lastX + stepX * i;
                 const currentY = lastY + stepY * i;
-                
+
                 // Draw a square stamp centered at (currentX, currentY)
                 ctx.fillRect(currentX - halfSize, currentY - halfSize, brushSize, brushSize);
             }
@@ -286,8 +377,8 @@
                 currentTool = tool;
 
                 // Update active button styling
-                toolButtons.forEach(btn => btn.classList.remove('active', 'btn-primary', 'btn-danger'));
-                
+                toolButtons.forEach(btn => btn.classList.remove('active'));
+
                 if (tool === 'brush') {
                     button.classList.add('btn-primary');
                 } else if (tool === 'eraser') {
@@ -296,13 +387,13 @@
                 button.classList.add('active');
             });
             // Initial styling setup
-            if(button.getAttribute('data-tool') === 'brush') {
+            if (button.getAttribute('data-tool') === 'brush') {
                 button.classList.add('btn-primary');
             } else if (button.getAttribute('data-tool') === 'eraser') {
                 button.classList.add('btn-danger');
             }
         });
-        
+
         // Tip Selection (Dropdown)
         tipDropdownItems.forEach(item => {
             item.addEventListener('click', (e) => {
@@ -322,20 +413,39 @@
             brushSize = parseInt(e.target.value);
             sizeValueSpan.textContent = brushSize;
         });
-        
+
         // Clear Canvas Button
         document.getElementById('clearBtn').addEventListener('click', () => {
             ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            saveState(); // Save the cleared state
         });
+
+        // Undo Button
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+                if (historyIndex > 0) {
+                    loadState(historyIndex - 1);
+                }
+            });
+        }
+
+        // Redo Button
+        if (redoBtn) {
+            redoBtn.addEventListener('click', () => {
+                if (historyIndex < history.length - 1) {
+                    loadState(historyIndex + 1);
+                }
+            });
+        }
+
 
         // Export Dropdown Listener
         document.querySelector('.exportDropdown').addEventListener('click', (e) => {
             e.preventDefault();
-            console.log(e);
             const target = e.target.closest('[data-export]');
             if (!target) return;
             const exportType = target.getAttribute('data-export');
-            
+
             const downloadImage = (url, filename) => {
                 const a = document.createElement('a');
                 a.href = url;
@@ -344,7 +454,7 @@
                 a.click();
                 document.body.removeChild(a);
             }
-            
+
             const getDrawingURL = (mimeType, addWhiteBackground) => {
                 const w = drawingCanvas.width;
                 const h = drawingCanvas.height;
@@ -363,7 +473,7 @@
                 // Draw the main canvas content onto the export canvas
                 exportCtx.drawImage(drawingCanvas, 0, 0);
 
-                const quality = mimeType === 'image/jpeg' ? 0.9 : 1.0; 
+                const quality = mimeType === 'image/jpeg' ? 0.9 : 1.0;
                 return exportCanvas.toDataURL(mimeType, quality);
             }
 
@@ -383,10 +493,10 @@
         // --- Canvas Interaction Listeners ---
 
         // 1. Handle mouse/pen down
-        drawingCanvas.addEventListener('mousedown', (e) => { 
+        drawingCanvas.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return; // Only respond to left click
 
-            isDrawing = true; 
+            isDrawing = true;
             [lastX, lastY] = [e.offsetX, e.offsetY];
 
             // Draw initial stamp for a click/dot
@@ -394,11 +504,11 @@
                 drawStamp(lastX, lastY);
             } else {
                 // Draw initial dot for round tip by drawing a line to itself
-                drawSimpleLine(lastX, lastY); 
+                drawSimpleLine(lastX, lastY);
             }
 
             // Remove cursor on drawing start
-            clearCursorOverlay(); 
+            clearCursorOverlay();
         });
 
         // 2. Handle mouse/pen move
@@ -413,7 +523,11 @@
 
         // 3. Handle mouse/pen up and leave
         const stopDrawing = () => {
-             isDrawing = false;
+            // Only save state if we were actually drawing (i.e., not a simple mouseup without movement)
+            if (isDrawing) {
+                saveState();
+            }
+            isDrawing = false;
         };
 
         drawingCanvas.addEventListener('mouseup', stopDrawing);
@@ -428,4 +542,5 @@
     </script>
 
 </body>
+
 </html>
