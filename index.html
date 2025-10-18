@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Digital Sketchpad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide icons for clean, modern interface -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Define the primary font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            overflow: hidden; /* Prevent body scrolling */
+        }
+        /* Custom styling for the canvas container */
+        #canvasContainer {
+            position: relative;
+            flex-grow: 1;
+            cursor: none; /* Hide default cursor to show custom overlay */
+            touch-action: none; /* Prevent touch scrolling on the canvas */
+        }
+        /* Position both canvases absolutely to stack them */
+        .sketch-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        /* Style for the active tool button */
+        .tool-button.active {
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4f46e5; /* Custom ring focus for active */
+        }
+        /* Tailwind Dropdown implementation structure */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0; /* Align dropdown to the right */
+            z-index: 10;
+        }
+        .dropdown:hover .dropdown-menu, .dropdown-menu.show {
+            display: block;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen antialiased">
+
+    <!-- Header and Controls -->
+    <header class="bg-white shadow-lg p-3 sm:p-4 flex flex-wrap items-center justify-between z-20">
+        
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight mr-4">Sketchpad</h1>
+        
+        <div class="flex flex-wrap items-center space-x-2 sm:space-x-4 mt-2 sm:mt-0">
+            
+            <!-- Tool Selection -->
+            <div class="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg shadow-inner">
+                <button id="brushBtn" data-tool="brush" class="tool-button active p-2 rounded-md transition duration-150 ease-in-out bg-indigo-500 text-white hover:bg-indigo-600" title="Brush">
+                    <i data-lucide="paintbrush" class="w-5 h-5"></i>
+                </button>
+                <button id="eraserBtn" data-tool="eraser" class="tool-button p-2 rounded-md transition duration-150 ease-in-out bg-red-500 text-white hover:bg-red-600" title="Eraser">
+                    <i data-lucide="eraser" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Color Picker -->
+            <div class="flex items-center space-x-2">
+                <label for="colorPicker" class="text-sm font-medium text-gray-700 hidden sm:block">Color:</label>
+                <input type="color" id="colorPicker" value="#000000" class="w-10 h-10 border-2 border-gray-300 rounded-full cursor-pointer overflow-hidden transition duration-150 hover:border-indigo-500">
+            </div>
+
+            <!-- Size Slider -->
+            <div class="flex items-center space-x-2 min-w-40">
+                <label for="sizeSlider" class="text-sm font-medium text-gray-700 hidden sm:block">Size (<span id="sizeValue">10</span>):</label>
+                <input type="range" id="sizeSlider" min="1" max="100" value="10" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer range-lg">
+            </div>
+            
+            <!-- Tip Dropdown -->
+            <div class="dropdown">
+                <button id="tipDropdown" type="button" class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Tip: <span id="currentTipText" class="ml-1 font-semibold">Round</span>
+                    <i data-lucide="chevron-down" class="ml-2 -mr-1 w-5 h-5"></i>
+                </button>
+                <div class="dropdown-menu origin-top-right right-0 mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100">
+                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="tipDropdown">
+                        <a href="#" data-tip="round" class="dropdown-item text-gray-700 block px-4 py-2 text-sm hover:bg-indigo-500 hover:text-white" role="menuitem">Round</a>
+                        <a href="#" data-tip="square" class="dropdown-item text-gray-700 block px-4 py-2 text-sm hover:bg-indigo-500 hover:text-white" role="menuitem">Square</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clear Button -->
+            <button id="clearBtn" class="p-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 transition duration-150 shadow-md" title="Clear Canvas">
+                <i data-lucide="delete" class="w-5 h-5"></i>
+            </button>
+            
+            <!-- Undo/Redo -->
+            <button id="undoBtn" class="p-2 rounded-md bg-gray-300 text-gray-700 hover:bg-gray-400 transition duration-150 shadow-md disabled:opacity-50" disabled title="Undo">
+                <i data-lucide="undo" class="w-5 h-5"></i>
+            </button>
+            <button id="redoBtn" class="p-2 rounded-md bg-gray-300 text-gray-700 hover:bg-gray-400 transition duration-150 shadow-md disabled:opacity-50" disabled title="Redo">
+                <i data-lucide="redo" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Export Dropdown -->
+            <div class="dropdown">
+                <button type="button" class="inline-flex justify-center w-full rounded-md border border-indigo-500 shadow-sm px-4 py-2 bg-indigo-500 text-sm font-medium text-white hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Export
+                    <i data-lucide="download" class="ml-2 -mr-1 w-5 h-5"></i>
+                </button>
+                <div class="exportDropdown dropdown-menu origin-top-right right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100">
+                    <div class="py-1">
+                        <a href="#" data-export="png_white" class="text-gray-700 block px-4 py-2 text-sm hover:bg-indigo-500 hover:text-white">PNG (White Background)</a>
+                        <a href="#" data-export="png_transparent" class="text-gray-700 block px-4 py-2 text-sm hover:bg-indigo-500 hover:text-white">PNG (Transparent)</a>
+                        <a href="#" data-export="jpeg" class="text-gray-700 block px-4 py-2 text-sm hover:bg-indigo-500 hover:text-white">JPEG (White Background)</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- Canvas Area -->
+    <main id="canvasContainer" class="flex-grow bg-gray-200">
+        <!-- Drawing Canvas: Where the art is permanently drawn -->
+        <canvas id="drawingCanvas" class="sketch-canvas bg-white shadow-xl"></canvas>
+        <!-- Overlay Canvas: Used only for the custom cursor/preview -->
+        <canvas id="overlayCanvas" class="sketch-canvas pointer-events-none"></canvas>
+    </main>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const ctx = drawingCanvas.getContext('2d');
+        const overlayCtx = overlayCanvas.getContext('2d');
+        const sizeValueSpan = document.getElementById('sizeValue');
+
+        // Elements for tool control
+        const toolButtons = document.querySelectorAll('.tool-button');
+        const tipDropdownItems = document.querySelectorAll('.dropdown-menu a[data-tip]');
+        const currentTipText = document.getElementById('currentTipText');
+
+        // Elements for Undo/Redo
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+
+        // State variables
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentTool = 'brush'; // 'brush' or 'eraser'
+        let brushTip = 'round'; // 'round' or 'square'
+        let brushColor = '#000000';
+        let brushSize = 10;
+
+        // --- History State Variables for Undo/Redo ---
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY_SIZE = 30; // Limit history size to prevent memory issues
+        
+        // --- CORE FIX: Snapshot function with forced white background ---
+        /**
+         * Creates a DataURL snapshot of the drawing canvas, forcing a white background
+         * to prevent history loading as transparent (and thus empty-looking) after erasure.
+         */
+        function createDataURLForHistory(mimeType = 'image/png') {
+            const w = drawingCanvas.width;
+            const h = drawingCanvas.height;
+
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = w;
+            exportCanvas.height = h;
+            const exportCtx = exportCanvas.getContext('2d');
+
+            // 1. Draw solid white background
+            exportCtx.fillStyle = '#ffffff';
+            exportCtx.fillRect(0, 0, w, h);
+
+            // 2. Draw the main canvas content (this covers the white with drawings, 
+            //    but keeps erased areas as white)
+            exportCtx.drawImage(drawingCanvas, 0, 0);
+
+            return exportCanvas.toDataURL(mimeType, 1.0);
+        }
+
+        /**
+         * Clears and draws a canvas state from a data URL.
+         * @param {string} dataURL The canvas state as a data URL (which now includes the white background).
+         */
+        function restoreDrawingCanvas(dataURL) {
+            const width = drawingCanvas.width;
+            const height = drawingCanvas.height;
+            const img = new Image();
+            
+            img.onload = () => {
+                // Clear the main canvas completely to transparent
+                ctx.clearRect(0, 0, width, height);
+                
+                // Set the composite operation back to default before drawing the image
+                ctx.globalCompositeOperation = 'source-over'; 
+                
+                // Draw the historical image (which contains the white background)
+                ctx.drawImage(img, 0, 0, width, height); 
+                updateUndoRedoButtons();
+            };
+            img.src = dataURL;
+        }
+
+
+        /**
+         * Initializes the canvas sizes to fill the container and sets up event listeners.
+         */
+        function initializeCanvases() {
+            const container = drawingCanvas.parentElement;
+            const updateCanvasDimensions = () => {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                let currentHistoryState = null;
+
+                // Capture the state before resizing to prevent data loss
+                if (historyIndex > -1) {
+                    currentHistoryState = history[historyIndex];
+                }
+
+                // Set canvas element dimensions
+                drawingCanvas.width = width;
+                drawingCanvas.height = height;
+                overlayCanvas.width = width;
+                overlayCanvas.height = height;
+
+                // Restore image data or save initial state
+                if (currentHistoryState) {
+                    restoreDrawingCanvas(currentHistoryState);
+                } else {
+                    // Initial save of the blank canvas state
+                    saveState();
+                }
+
+                // Set initial context properties after resizing
+                ctx.lineJoin = 'round';
+            };
+
+            // Set initial dimensions and listen for resize events
+            updateCanvasDimensions();
+            window.addEventListener('resize', updateCanvasDimensions);
+        }
+
+        // --- History Management Functions ---
+
+        /**
+         * Saves the current canvas state (as a DataURL) to the history array.
+         */
+        function saveState() {
+            // If the index is not at the end, clear out the 'future' (redo) states
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+
+            // FIXED: Use helper to get state with forced white background
+            const dataURL = createDataURLForHistory();
+
+            // Add the new state
+            history.push(dataURL);
+            historyIndex++;
+
+            // Trim the history if it exceeds the max size
+            if (history.length > MAX_HISTORY_SIZE) {
+                history.shift(); // Remove the oldest state
+                historyIndex--; // Adjust the index
+            }
+
+            updateUndoRedoButtons();
+        }
+
+        /**
+         * Loads a canvas state from the history array.
+         * @param {number} index The index of the state to load.
+         */
+        function loadState(index) {
+            if (index >= 0 && index < history.length) {
+                historyIndex = index;
+                restoreDrawingCanvas(history[historyIndex]);
+            }
+        }
+
+        /**
+         * Enables/Disables the Undo/Redo buttons based on the current history index.
+         */
+        function updateUndoRedoButtons() {
+            if (undoBtn) {
+                // Can undo if the current state is not the very first (0) state.
+                undoBtn.disabled = historyIndex <= 0;
+            }
+            if (redoBtn) {
+                // Can redo if the current state is not the last state in the array.
+                redoBtn.disabled = historyIndex >= history.length - 1;
+            }
+        }
+
+        // --- Cursor Functions ---
+
+        /**
+         * Clears the cursor drawn on the overlay canvas.
+         */
+        function clearCursorOverlay() {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        }
+
+        /**
+         * Draws the custom cursor on the overlay canvas, reflecting size and tip shape.
+         */
+        function drawCursor(x, y) {
+            clearCursorOverlay();
+
+            // Set styles for the cursor outline
+            overlayCtx.strokeStyle = currentTool === 'brush' ? brushColor : '#f87171'; // Red for eraser
+            overlayCtx.lineWidth = 2;
+            overlayCtx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Semi-transparent fill
+
+            const halfSize = brushSize / 2;
+
+            overlayCtx.beginPath();
+            if (brushTip === 'round') {
+                // Round Tip Cursor: Draw a circle
+                overlayCtx.arc(x, y, halfSize, 0, Math.PI * 2);
+            } else {
+                // Square Tip Cursor: Draw a rectangle
+                overlayCtx.rect(x - halfSize, y - halfSize, brushSize, brushSize);
+            }
+            overlayCtx.fill();
+            overlayCtx.stroke();
+        }
+
+        // --- Drawing Logic ---
+
+        /**
+         * Main drawing function. Determines whether to use line or stamp based on tip.
+         */
+        function draw(x, y) {
+            if (!isDrawing) return;
+
+            // Use simple lineTo for round, and the stamping method for square tips 
+            const useStamping = brushTip === 'square';
+
+            if (useStamping) {
+                drawStamp(x, y);
+            } else {
+                drawSimpleLine(x, y);
+            }
+
+            // Update last position
+            [lastX, lastY] = [x, y];
+        }
+
+        /**
+         * Sets drawing parameters and draws a standard lineTo stroke (for round brush/eraser).
+         */
+        function drawSimpleLine(x, y) {
+            // Set global composite operation for brush/eraser
+            ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
+            
+            // Only set strokeStyle if we are brushing (harmless for eraser, but cleaner)
+            if (currentTool === 'brush') {
+                ctx.strokeStyle = brushColor;
+            } else {
+                 // For eraser, the strokeStyle is irrelevant, but we ensure line properties are set
+                 ctx.strokeStyle = '#000000'; 
+            }
+
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        /**
+         * Sets drawing parameters and draws a segment as a series of squares (for square tips).
+         */
+        function drawStamp(x, y) {
+            const dx = x - lastX;
+            const dy = y - lastY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            // Stamping frequency: Based on size to avoid gaps
+            const steps = Math.max(1, Math.ceil(distance / (brushSize * 0.5)));
+
+            const stepX = dx / steps;
+            const stepY = dy / steps;
+
+            const halfSize = brushSize / 2;
+
+            // Set global composite operation and fill style
+            ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
+            ctx.fillStyle = brushColor;
+
+            // Draw a series of squares along the path
+            for (let i = 0; i <= steps; i++) {
+                const currentX = lastX + stepX * i;
+                const currentY = lastY + stepY * i;
+
+                // Draw a square stamp centered at (currentX, currentY)
+                ctx.fillRect(currentX - halfSize, currentY - halfSize, brushSize, brushSize);
+            }
+        }
+
+
+        // --- Control Event Listeners ---
+
+        // Tool Selection (Brush/Eraser)
+        toolButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tool = button.getAttribute('data-tool');
+                currentTool = tool;
+
+                // Update active button styling
+                toolButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            });
+             // Set initial active state for the brush
+            if (button.getAttribute('data-tool') === 'brush') {
+                button.classList.add('active');
+            }
+        });
+
+        // Tip Selection (Dropdown)
+        tipDropdownItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                brushTip = item.getAttribute('data-tip');
+                currentTipText.textContent = brushTip.charAt(0).toUpperCase() + brushTip.slice(1);
+            });
+        });
+
+        // Color Picker
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            brushColor = e.target.value;
+        });
+
+        // Size Slider
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            sizeValueSpan.textContent = brushSize;
+        });
+
+        // Clear Canvas Button
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            // Ensure composite operation is source-over before clearing the whole thing
+            ctx.globalCompositeOperation = 'source-over'; 
+            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            saveState(); // Save the cleared state
+        });
+
+        // Undo Button
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+                if (historyIndex > 0) {
+                    loadState(historyIndex - 1);
+                }
+            });
+        }
+
+        // Redo Button
+        if (redoBtn) {
+            redoBtn.addEventListener('click', () => {
+                if (historyIndex < history.length - 1) {
+                    loadState(historyIndex + 1);
+                }
+            });
+        }
+
+
+        // Export Dropdown Listener
+        document.querySelector('.exportDropdown').addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('[data-export]');
+            if (!target) return;
+            const exportType = target.getAttribute('data-export');
+
+            const downloadImage = (url, filename) => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            // Reusing the white-background creation logic
+            const getDrawingURL = (mimeType, transparent) => {
+                 const url = createDataURLForHistory(mimeType);
+                 // If transparent is explicitly requested, we need a separate canvas without the forced background
+                 if (transparent) {
+                    return drawingCanvas.toDataURL('image/png', 1.0);
+                 }
+                 return url;
+            }
+
+            if (exportType === 'png_white') {
+                const url = getDrawingURL('image/png', false);
+                downloadImage(url, 'sketchpad_white_bg.png');
+            } else if (exportType === 'png_transparent') {
+                // Use the main canvas directly for transparent export
+                const url = getDrawingURL('image/png', true); 
+                downloadImage(url, 'sketchpad_transparent.png');
+            } else if (exportType === 'jpeg') {
+                // JPEG doesn't support transparency, so use the backgrounded version
+                const url = getDrawingURL('image/jpeg', false); 
+                downloadImage(url, 'sketchpad.jpeg');
+            }
+        });
+
+
+        // --- Canvas Interaction Listeners: Mouse & Touch ---
+        
+        /**
+         * Calculates coordinates for both mouse and touch events.
+         */
+        function getCoords(e) {
+            const rect = drawingCanvas.getBoundingClientRect();
+            // Check for touch event first
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top,
+                isTouch: !!e.touches
+            };
+        }
+
+
+        // 1. Handle pointer down (Mouse & Touch Start)
+        const startDrawing = (e) => {
+            const { x, y } = getCoords(e);
+            
+            // For touch events, prevent default behavior (like scrolling/zooming)
+            if (e.touches) {
+                e.preventDefault(); 
+            }
+            
+            // Only respond to left click (mouse button 0) or touch
+            if (e.button !== 0 && !e.touches) return; 
+
+            isDrawing = true;
+            [lastX, lastY] = [x, y];
+
+            // Draw initial stamp for a click/dot
+            if (brushTip === 'square') {
+                drawStamp(lastX, lastY);
+            } else {
+                drawSimpleLine(lastX, lastY);
+            }
+
+            // Remove cursor on drawing start
+            clearCursorOverlay();
+        };
+        
+        // 2. Handle pointer move (Mouse & Touch Move)
+        const moveDrawing = (e) => {
+            const { x, y, isTouch } = getCoords(e);
+            
+            if (isTouch) {
+                e.preventDefault();
+            }
+
+            // Only draw cursor for mouse, as touch devices don't benefit from it
+            if (!isTouch) {
+                 drawCursor(x, y);
+            }
+
+            if (isDrawing) {
+                draw(x, y);
+            }
+        };
+
+        // 3. Handle pointer up and leave (Mouse & Touch End/Leave)
+        const stopDrawing = (e) => {
+            // Only save state if we were actually drawing
+            if (isDrawing) {
+                saveState();
+            }
+            isDrawing = false;
+        };
+        
+        // Listener Assignments
+        drawingCanvas.addEventListener('mousedown', startDrawing);
+        drawingCanvas.addEventListener('mousemove', moveDrawing);
+        drawingCanvas.addEventListener('mouseup', stopDrawing);
+        drawingCanvas.addEventListener('mouseleave', () => {
+            stopDrawing();
+            clearCursorOverlay(); // Remove cursor when mouse leaves the canvas area
+        });
+        
+        // Touch Listeners
+        drawingCanvas.addEventListener('touchstart', startDrawing);
+        drawingCanvas.addEventListener('touchmove', moveDrawing);
+        drawingCanvas.addEventListener('touchend', stopDrawing);
+
+
+        // Initialize everything on load
+        window.onload = initializeCanvases;
+
+    </script>
+</body>
+</html>
