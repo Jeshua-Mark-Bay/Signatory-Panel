@@ -473,44 +473,55 @@
 
 
         // Export Dropdown Listener
-        document.querySelector('.exportDropdown').addEventListener('click', (e) => {
-            e.preventDefault();
-            const target = e.target.closest('[data-export]');
-            if (!target) return;
-            const exportType = target.getAttribute('data-export');
+        // Export Dropdown Listener (fixed for transparent PNG)
+document.querySelector('.exportDropdown').addEventListener('click', (e) => {
+    e.preventDefault();
+    const target = e.target.closest('[data-export]');
+    if (!target) return;
+    const exportType = target.getAttribute('data-export');
 
-            const downloadImage = (url, filename) => {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
+    const downloadImage = (url, filename) => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
 
-            // Reusing the white-background creation logic
-            const getDrawingURL = (mimeType, transparent) => {
-                 const url = createDataURLForHistory(mimeType);
-                 // If transparent is explicitly requested, we need a separate canvas without the forced background
-                 if (transparent) {
-                    return drawingCanvas.toDataURL('image/png', 1.0);
-                 }
-                 return url;
-            }
+    // Helper for white background export (reuse undo/redo-safe snapshot)
+    const getWhiteBackgroundImage = (mimeType) => createDataURLForHistory(mimeType);
 
-            if (exportType === 'png_white') {
-                const url = getDrawingURL('image/png', false);
-                downloadImage(url, 'sketchpad_white_bg.png');
-            } else if (exportType === 'png_transparent') {
-                // Use the main canvas directly for transparent export
-                const url = getDrawingURL('image/png', true); 
-                downloadImage(url, 'sketchpad_transparent.png');
-            } else if (exportType === 'jpeg') {
-                // JPEG doesn't support transparency, so use the backgrounded version
-                const url = getDrawingURL('image/jpeg', false); 
-                downloadImage(url, 'sketchpad.jpeg');
-            }
-        });
+    // Helper for transparent PNG export (draw canvas as-is)
+    const getTransparentImage = () => {
+        // Create a copy canvas to ensure full alpha is preserved
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = drawingCanvas.width;
+        exportCanvas.height = drawingCanvas.height;
+        const exportCtx = exportCanvas.getContext('2d');
+
+        // Copy drawing directly (keeps alpha transparency intact)
+        exportCtx.drawImage(drawingCanvas, 0, 0);
+
+        return exportCanvas.toDataURL('image/png', 1.0);
+    };
+
+    let url = '';
+    let filename = '';
+
+    if (exportType === 'png_white') {
+        url = getWhiteBackgroundImage('image/png');
+        filename = 'signature_white_bg.png';
+    } else if (exportType === 'png_transparent') {
+        url = getTransparentImage();
+        filename = 'signature_transparent.png';
+    } else if (exportType === 'jpeg') {
+        url = getWhiteBackgroundImage('image/jpeg');
+        filename = 'signature.jpeg';
+    }
+
+    if (url) downloadImage(url, filename);
+});
 
 
         // --- Canvas Interaction Listeners: Mouse & Touch ---
