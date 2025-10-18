@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Canvas</title>
+    <!-- Load Tailwind CSS for utility classes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the drawing application */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f4f9;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            aspect-ratio: 16 / 9; /* Maintain a 16:9 aspect ratio */
+            margin: 0 auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: none; /* Hide default cursor when over canvas area */
+        }
+        #drawingCanvas {
+            z-index: 10;
+        }
+        #overlayCanvas {
+            z-index: 20;
+            pointer-events: none; /* Crucial: Allows clicks to pass through to the drawingCanvas */
+        }
+        button {
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .tool-button.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px #6366f1; /* Ring around active button */
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen">
+
+    <div class="w-full max-w-lg mb-6 p-4 bg-white rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">Digital Sketchpad</h1>
+        <div class="flex flex-wrap justify-center gap-3">
+            <!-- Tool Selection Buttons -->
+            <button id="brushBtn" data-tool="brush" class="tool-button active p-3 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M14.54 13.5l-4.04 4.04a2 2 0 0 1-2.83 0L3 12.04v-3.5a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v1.5a1 1 0 0 0 1 1h1.5a1 1 0 0 0 1-1V5.5a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v1.5a1 1 0 0 0 1 1h1.5a1 1 0 0 0 1-1V3a1 1 0 0 1 1-1h1.5a1 1 0 0 1 1 1v1.5a1 1 0 0 0 1 1h1.5a1 1 0 0 0 1-1V5.5"/></svg>
+            </button>
+            <button id="eraserBtn" data-tool="eraser" class="tool-button p-3 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+
+            <!-- Color and Size Controls -->
+            <input type="color" id="colorPicker" value="#000000" class="w-12 h-12 p-1 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-indigo-500">
+            <input type="range" id="sizeSlider" min="2" max="50" value="10" class="w-24 h-12">
+            <span id="sizeValue" class="text-xl font-semibold self-center min-w-[30px] text-center">10</span>
+
+            <!-- Action Button -->
+            <button id="clearBtn" class="p-3 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Canvas Container -->
+    <div class="canvas-container">
+        <!-- Main Drawing Canvas -->
+        <canvas id="drawingCanvas"></canvas>
+        <!-- Overlay Canvas for Custom Cursor -->
+        <canvas id="overlayCanvas"></canvas>
+    </div>
+
+    <script>
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const ctx = drawingCanvas.getContext('2d');
+        const overlayCtx = overlayCanvas.getContext('2d');
+        const sizeValueSpan = document.getElementById('sizeValue');
+        const toolButtons = document.querySelectorAll('.tool-button');
+
+        // State variables
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentTool = 'brush'; // 'brush' or 'eraser'
+        let brushColor = '#000000';
+        let brushSize = 10;
+
+        /**
+         * Initializes the canvas sizes to fill the container and sets up event listeners.
+         */
+        function initializeCanvases() {
+            const container = drawingCanvas.parentElement;
+            const updateCanvasDimensions = () => {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                drawingCanvas.width = width;
+                drawingCanvas.height = height;
+                overlayCanvas.width = width;
+                overlayCanvas.height = height;
+
+                // Set initial context properties after resizing
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = brushSize;
+                ctx.strokeStyle = brushColor;
+            };
+
+            // Set initial dimensions and listen for resize events
+            updateCanvasDimensions();
+            window.addEventListener('resize', updateCanvasDimensions);
+        }
+
+        /**
+         * Clears the cursor drawn on the overlay canvas.
+         */
+        function clearCursorOverlay() {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        }
+
+        /**
+         * Draws the custom cursor on the overlay canvas.
+         * @param {number} x - The x-coordinate of the cursor.
+         * @param {number} y - The y-coordinate of the cursor.
+         */
+        function drawCursor(x, y) {
+            clearCursorOverlay();
+            overlayCtx.beginPath();
+            overlayCtx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+
+            if (currentTool === 'brush') {
+                // Brush cursor styling (solid color circle)
+                overlayCtx.strokeStyle = brushColor;
+                overlayCtx.lineWidth = 1;
+                overlayCtx.setLineDash([]);
+                overlayCtx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                overlayCtx.fill();
+                overlayCtx.stroke();
+            } else if (currentTool === 'eraser') {
+                // Eraser cursor styling (light gray transparent circle) - **Customized Code**
+                overlayCtx.setLineDash([]); // Clears any previously set dash patterns
+                overlayCtx.strokeStyle = 'transparent'; // No border
+                overlayCtx.fillStyle = 'rgba(192, 192, 192, 0.5)'; // Light gray with 50% opacity
+                overlayCtx.fill(); 
+            }
+        }
+
+        /**
+         * Draws a line segment onto the main canvas.
+         * @param {Event} e - The mouse event object.
+         */
+        function draw(e) {
+            if (!isDrawing) return;
+
+            // Set drawing properties based on the selected tool
+            if (currentTool === 'brush') {
+                ctx.globalCompositeOperation = 'source-over'; // Normal drawing
+                ctx.strokeStyle = brushColor;
+            } else if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out'; // Erasing
+                ctx.strokeStyle = '#000000'; // Color doesn't matter for destination-out
+            }
+
+            // Ensure line width is always synced
+            ctx.lineWidth = brushSize;
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        }
+
+        // --- Event Listeners ---
+
+        // Tool Selection
+        toolButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tool = button.getAttribute('data-tool');
+                currentTool = tool;
+
+                // Update active button styling
+                toolButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            });
+        });
+
+        // Color Picker
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            brushColor = e.target.value;
+            ctx.strokeStyle = brushColor;
+        });
+
+        // Size Slider
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            sizeValueSpan.textContent = brushSize;
+        });
+
+        // Clear Canvas Button
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        });
+
+
+        // 1. Handle mouse/pen down to track drawing state (The problematic snippet, now functional)
+        drawingCanvas.addEventListener('mousedown', (e) => { 
+            // Check if it's the left mouse button (0)
+            if (e.button === 0) { 
+                isDrawing = true; 
+                // Set the starting point for the line
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+                
+                // IMPORTANT: Clear the cursor while drawing for a cleaner experience
+                clearCursorOverlay(); 
+            }
+        });
+
+        // 2. Handle mouse/pen move to draw or erase
+        drawingCanvas.addEventListener('mousemove', (e) => {
+            // Draw the custom cursor regardless of drawing state
+            drawCursor(e.offsetX, e.offsetY);
+
+            // Only draw/erase if isDrawing is true
+            if (isDrawing) {
+                draw(e);
+            }
+        });
+
+        // 3. Handle mouse/pen up to stop drawing
+        drawingCanvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        // 4. Handle mouse/pen leave to stop drawing and clear cursor
+        drawingCanvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+            clearCursorOverlay();
+        });
+
+        // Initialize everything on load
+        window.onload = initializeCanvases;
+
+    </script>
+
+</body>
+</html>

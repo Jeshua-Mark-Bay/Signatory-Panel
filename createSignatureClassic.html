@@ -1,0 +1,428 @@
+<!-- HTML structure, Tailwind styling, and JavaScript logic in a single file -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<style>
+    /* Custom styling for the canvas border and shadow */
+    #signatureCanvas {
+        border: 2px solid #e5e7eb; /* light gray */
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        touch-action: none; /* Prevent scrolling/zooming on the canvas on touch devices */
+    }
+</style>
+<script>
+    // Configuration for Tailwind CSS (using Inter font as requested)
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['Inter', 'sans-serif'],
+                },
+            },
+        },
+    };
+</script>
+
+<body class="bg-gray-50 min-h-screen flex items-start justify-center p-4 sm:p-8 font-sans">
+
+    <div class="w-full max-w-4xl bg-white rounded-xl shadow-2xl p-6 sm:p-8 my-8">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-3 flex items-center">
+            <svg class="w-7 h-7 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+            Digital Signature Pad
+        </h1>
+
+        <!-- Signature Canvas Container (3:1 Aspect Ratio) -->
+        <div class="mb-6 relative aspect-[3/1]">
+            <canvas id="signatureCanvas" class="w-full h-full bg-white"></canvas>
+        </div>
+
+        <!-- Drawing Controls (Color, Thickness, Erase) -->
+        <div class="mb-6 flex flex-col lg:flex-row gap-4 justify-between items-center p-4 bg-gray-100 rounded-lg">
+            
+            <!-- Pen Color -->
+            <div class="flex items-center space-x-4">
+                <label for="penColor" class="text-sm font-medium text-gray-700 whitespace-nowrap">Pen Color:</label>
+                <input type="color" id="penColor" value="#000000" class="w-10 h-10 p-1 border-gray-300 rounded-full cursor-pointer transition duration-150 ease-in-out hover:ring-2 hover:ring-indigo-500">
+            </div>
+
+            <!-- Thickness Control -->
+            <div class="flex items-center space-x-3 w-full lg:w-1/3">
+                <label for="penThickness" class="text-sm font-medium text-gray-700 whitespace-nowrap">Thickness (<span id="thicknessValue">2.5</span>):</label>
+                <input type="range" id="penThickness" min="0.5" max="10" step="0.5" value="2.5" class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer range-lg">
+            </div>
+
+            <!-- Erase Toggle -->
+            <button id="toggleErase" class="flex items-center px-4 py-2 bg-yellow-500 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14L12 21"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 19H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2z"></path></svg>
+                <span id="eraseButtonText">Start Erasing</span>
+            </button>
+        </div>
+
+        <!-- History Controls (Clear, Undo, Redo) -->
+        <div class="grid grid-cols-3 gap-3 mb-6">
+            <button id="clear" class="flex items-center justify-center px-4 py-3 bg-red-500 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50" disabled>
+                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Clear
+            </button>
+            <button id="undo" class="flex items-center justify-center px-4 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50" disabled>
+                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Undo
+            </button>
+            <button id="redo" class="flex items-center justify-center px-4 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50" disabled>
+                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0018 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.433 5.341 6 7.234 6 9.5a6.002 6.002 0 004 5.659v2.585l-1.405 1.405z"></path></svg>
+                Redo
+            </button>
+        </div>
+
+        <!-- Export Dropdown -->
+        <div class="mb-6">
+            <h2 class="text-xl font-bold text-gray-700 mb-3">Export Signature</h2>
+            
+            <!-- Dropdown Container -->
+            <div class="relative inline-block text-left">
+                <button id="exportDropdownButton" class="flex items-center justify-center px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md transition duration-150 ease-in-out hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50" disabled>
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Export Signature
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+
+                <div id="exportDropdownMenu" class="origin-top-right absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden z-10">
+                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="exportDropdownButton">
+                        <a href="#" id="exportPngOpaque" class="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                            <span>PNG</span> 
+                            <span class="text-xs text-gray-500"> (White Background)</span>
+                        </a>
+                        <a href="#" id="exportPngTransparent" class="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                            <span>PNG</span>
+                            <span class="text-xs text-gray-500"> (Transparent)</span>
+                        </a>
+                        <a href="#" id="exportJpeg" class="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                            <span>JPEG</span>
+                            <span class="text-xs text-gray-500"> (Lossy)</span>
+                        </a>
+                        <a href="#" id="exportSvg" class="flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                            <span>SVG</span>
+                            <span class="text-xs text-gray-500"> (Vector)</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Temporary Message Box -->
+        <div id="messageBox" class="p-3 bg-green-100 text-green-800 rounded-lg hidden transition-opacity duration-300 opacity-0"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('signatureCanvas');
+            const penColorInput = document.getElementById('penColor');
+            const penThicknessInput = document.getElementById('penThickness');
+            const thicknessValueSpan = document.getElementById('thicknessValue');
+            const toggleEraseButton = document.getElementById('toggleErase');
+            const eraseButtonText = document.getElementById('eraseButtonText');
+            const clearButton = document.getElementById('clear');
+            const undoButton = document.getElementById('undo');
+            const redoButton = document.getElementById('redo');
+            const messageBox = document.getElementById('messageBox');
+            
+            // New Export Dropdown elements
+            const exportDropdownButton = document.getElementById('exportDropdownButton');
+            const exportDropdownMenu = document.getElementById('exportDropdownMenu');
+            const exportPngOpaqueButton = document.getElementById('exportPngOpaque');
+            const exportPngTransparentButton = document.getElementById('exportPngTransparent');
+            const exportJpegButton = document.getElementById('exportJpeg');
+            const exportSvgButton = document.getElementById('exportSvg');
+
+
+            let signaturePad = null;
+            let history = []; // Stores signature data for undo/redo
+            let historyPointer = -1;
+            let isErasing = false;
+            let currentPenColor = '#000000';
+            let currentPenWidth = parseFloat(penThicknessInput.value);
+            const backgroundColor = '#ffffff'; // Must match canvas background
+
+            // --- 1. Signature Pad Initialization and Resizing ---
+
+            // Ensures the canvas size is correctly set for high-DPI displays and resizes
+            function resizeCanvas() {
+                const ratio = Math.max(1, window.devicePixelRatio || 1);
+                const data = signaturePad ? signaturePad.toData() : null;
+
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext('2d').scale(ratio, ratio);
+
+                // Restore signature after resize
+                if (data) {
+                    signaturePad.clear();
+                    signaturePad.fromData(data);
+                }
+            }
+
+            // Initialize the Signature Pad
+            function initSignaturePad() {
+                signaturePad = new SignaturePad(canvas, {
+                    backgroundColor: backgroundColor,
+                    penColor: currentPenColor,
+                    // Set initial width based on slider value
+                    minWidth: currentPenWidth * 0.9,
+                    maxWidth: currentPenWidth * 1.1,
+                    throttle: 16
+                });
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
+                // Event listener to track changes and manage history
+                signaturePad.addEventListener("endStroke", () => {
+                    const currentDataLength = signaturePad.toData().length;
+                    
+                    // Explicitly determine the length of the last saved state for comparison.
+                    // If historyPointer is -1 (empty canvas), the last length is 0.
+                    const lastHistoryLength = historyPointer >= 0 ? history[historyPointer].length : 0; 
+                    
+                    // Only save history if the current data has more strokes than the last saved state.
+                    if (currentDataLength > lastHistoryLength) {
+                         saveHistory();
+                    }
+                    updateButtons();
+                });
+            }
+
+            // --- 2. History Management (Undo/Redo) ---
+
+            // Saves the current signature data to the history stack
+            function saveHistory() {
+                // Clear any 'redo' states if a new stroke is drawn
+                history = history.slice(0, historyPointer + 1);
+
+                // Save current state (copy data to prevent mutation)
+                const data = signaturePad.toData().map(group => ({ ...group, points: [...group.points] }));
+                history.push(data);
+                historyPointer = history.length - 1;
+            }
+
+            // Loads a state from the history stack
+            function loadState(index) {
+                if (index >= -1 && index < history.length) {
+                    historyPointer = index;
+                    signaturePad.clear();
+                    if (historyPointer >= 0) {
+                        signaturePad.fromData(history[historyPointer]);
+                    }
+                }
+            }
+
+            function undo() {
+                if (historyPointer > 0) {
+                    loadState(historyPointer - 1);
+                } else if (historyPointer === 0) {
+                    // Go from the first stroke state to the empty state (-1)
+                    loadState(-1);
+                }
+                updateButtons();
+            }
+
+            function redo() {
+                if (historyPointer < history.length - 1) {
+                    loadState(historyPointer + 1);
+                }
+                updateButtons();
+            }
+
+            // --- 3. UI State and Controls ---
+
+            function updateButtons() {
+                const hasContent = !signaturePad.isEmpty();
+                // Check if historyPointer is greater than -1 (meaning there is at least one stroke saved)
+                const canUndo = historyPointer > -1;
+                const canRedo = historyPointer < history.length - 1;
+
+                clearButton.disabled = !hasContent;
+                undoButton.disabled = !canUndo;
+                redoButton.disabled = !canRedo;
+
+                // Control the main Export Dropdown button state
+                exportDropdownButton.disabled = !hasContent;
+                
+                // If there's no content, ensure the dropdown is hidden
+                if (!hasContent) {
+                    exportDropdownMenu.classList.add('hidden');
+                }
+
+                // Update erase button style based on mode
+                if (isErasing) {
+                    toggleEraseButton.classList.remove('bg-yellow-500', 'hover:bg-yellow-600', 'focus:ring-yellow-500');
+                    toggleEraseButton.classList.add('bg-gray-700', 'hover:bg-gray-800', 'focus:ring-gray-700');
+                } else {
+                    toggleEraseButton.classList.add('bg-yellow-500', 'hover:bg-yellow-600', 'focus:ring-yellow-500');
+                    toggleEraseButton.classList.remove('bg-gray-700', 'hover:bg-gray-800', 'focus:ring-gray-700');
+                }
+            }
+
+            // --- 4. Pen Color and Thickness Controls ---
+
+            penColorInput.addEventListener('change', (e) => {
+                currentPenColor = e.target.value;
+                if (!isErasing) {
+                    signaturePad.penColor = currentPenColor;
+                }
+            });
+
+            penThicknessInput.addEventListener('input', (e) => {
+                currentPenWidth = parseFloat(e.target.value);
+                thicknessValueSpan.textContent = currentPenWidth;
+                
+                // Update the pen width dynamically
+                // We use a small range around currentPenWidth for the min/max width settings
+                signaturePad.minWidth = currentPenWidth * 0.9;
+                signaturePad.maxWidth = currentPenWidth * 1.1;
+
+                // If in erase mode, this also correctly updates the erase width
+            });
+
+
+            // --- 4b. Erase Mode Toggle ---
+            toggleEraseButton.addEventListener('click', () => {
+                isErasing = !isErasing;
+
+                if (isErasing) {
+                    // Enable Erase Mode: change pen color to background color
+                    signaturePad.penColor = backgroundColor;
+                    penColorInput.disabled = true;
+                    eraseButtonText.textContent = 'Stop Erasing (Active)';
+                    showTemporaryMessage('Erase Mode Active (drawing white on white).', 'bg-yellow-100 text-yellow-800');
+                } else {
+                    // Disable Erase Mode: restore previous pen color
+                    signaturePad.penColor = currentPenColor;
+                    penColorInput.disabled = false;
+                    eraseButtonText.textContent = 'Start Erasing';
+                    showTemporaryMessage('Drawing Mode Active.', 'bg-green-100 text-green-800');
+                }
+
+                updateButtons();
+            });
+
+            // --- 5. Action Handlers ---
+
+            clearButton.addEventListener('click', () => {
+                signaturePad.clear();
+                // Save the new 'empty' state to history
+                saveHistory(); 
+                updateButtons();
+                showTemporaryMessage('Signature cleared.', 'bg-red-100 text-red-800');
+            });
+
+            undoButton.addEventListener('click', undo);
+            redoButton.addEventListener('click', redo);
+
+            // Helper function to initiate file download
+            function download(dataURL, filename) {
+                const a = document.createElement('a');
+                a.href = dataURL;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            // Toggle dropdown visibility
+            exportDropdownButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!exportDropdownButton.disabled) {
+                    exportDropdownMenu.classList.toggle('hidden');
+                }
+            });
+
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!exportDropdownButton.contains(e.target) && !exportDropdownMenu.contains(e.target)) {
+                    exportDropdownMenu.classList.add('hidden');
+                }
+            });
+            
+            // Export PNG (Opaque - White BG)
+            exportPngOpaqueButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                exportDropdownMenu.classList.add('hidden');
+                if (signaturePad.isEmpty()) return;
+                // toDataURL with 'image/png' and a defined backgroundColor results in an opaque PNG
+                const dataURL = signaturePad.toDataURL('image/png', backgroundColor);
+                download(dataURL, 'signature_opaque.png');
+                showTemporaryMessage('PNG (White BG) downloaded successfully!', 'bg-green-100 text-green-800');
+            });
+
+            // Export PNG (Transparent)
+            exportPngTransparentButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                exportDropdownMenu.classList.add('hidden');
+                if (signaturePad.isEmpty()) return;
+                
+                // 1. Temporarily set background to transparent
+                signaturePad.backgroundColor = 'rgba(0,0,0,0)'; 
+                
+                // 2. Export the image
+                const dataURL = signaturePad.toDataURL('image/png');
+                
+                // 3. Restore the white background color immediately
+                signaturePad.backgroundColor = backgroundColor; 
+                
+                // 4. Clear and redraw the signature to ensure the visible canvas is correct
+                signaturePad.clear();
+                const currentData = historyPointer >= 0 ? history[historyPointer] : [];
+                signaturePad.fromData(currentData);
+
+                download(dataURL, 'signature_transparent.png');
+                showTemporaryMessage('PNG (Transparent) downloaded successfully!', 'bg-green-100 text-green-800');
+            });
+
+            // Export JPEG
+            exportJpegButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                exportDropdownMenu.classList.add('hidden');
+                if (signaturePad.isEmpty()) return;
+                const dataURL = signaturePad.toDataURL('image/jpeg', 0.8);
+                download(dataURL, 'signature.jpeg');
+                showTemporaryMessage('JPEG downloaded successfully!', 'bg-green-100 text-green-800');
+            });
+
+            // Export SVG
+            exportSvgButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                exportDropdownMenu.classList.add('hidden');
+                if (signaturePad.isEmpty()) return;
+                const svg = signaturePad.toSVG();
+                const blob = new Blob([svg], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                download(url, 'signature.svg');
+                showTemporaryMessage('SVG downloaded successfully!', 'bg-green-100 text-green-800');
+            });
+
+            // --- 6. Message Box Utility (for non-alert feedback) ---
+
+            function showTemporaryMessage(message, classes = 'bg-green-100 text-green-800') {
+                messageBox.textContent = message;
+                messageBox.className = 'p-3 rounded-lg transition-opacity duration-300 ' + classes;
+                messageBox.classList.remove('hidden', 'opacity-0');
+                messageBox.classList.add('opacity-100');
+
+                // Hide message after 3 seconds
+                setTimeout(() => {
+                    messageBox.classList.remove('opacity-100');
+                    messageBox.classList.add('opacity-0');
+                    setTimeout(() => {
+                        messageBox.classList.add('hidden');
+                    }, 300); // Wait for transition to finish
+                }, 3000);
+            }
+
+            // Start everything up
+            initSignaturePad();
+            updateButtons();
+        });
+    </script>
+</body>
