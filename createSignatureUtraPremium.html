@@ -129,21 +129,18 @@
     </div>
 
     <script>
+        // IMPORTANT VARIABLES AND ELEMENTS
         const drawingCanvas = document.getElementById('drawingCanvas');
         const overlayCanvas = document.getElementById('overlayCanvas');
         const ctx = drawingCanvas.getContext('2d');
         const overlayCtx = overlayCanvas.getContext('2d');
         const sizeValueSpan = document.getElementById('sizeValue');
-
-        // Elements for tool control
+        // Control Buttons
         const toolButtons = document.querySelectorAll('.tool-button');
         const tipDropdownItems = document.querySelectorAll('.dropdown-menu a[data-tip]');
         const currentTipText = document.getElementById('currentTipText');
-
-        // Elements for Undo/Redo
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
-
         // State variables
         let isDrawing = false;
         let lastX = 0;
@@ -153,130 +150,114 @@
         let brushColor = '#000000';
         let brushSize = 10;
 
-        // --- History State Variables for Undo/Redo ---
-        let history = [];
-        let historyIndex = -1;
-        const MAX_HISTORY_SIZE = 30; // Limit history size to prevent memory issues
-        
-        // --- CORE FIX: Snapshot function with forced white background ---
-        /**
-         * Creates a DataURL snapshot of the drawing canvas, forcing a white background
-         * to prevent history loading as transparent (and thus empty-looking) after erasure.
-         */
-        function createDataURLForHistory(mimeType = 'image/png') {
-            const w = drawingCanvas.width;
-            const h = drawingCanvas.height;
-
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = w;
-            exportCanvas.height = h;
-            const exportCtx = exportCanvas.getContext('2d');
-
-            // 1. Draw solid white background
-            exportCtx.fillStyle = '#ffffff';
-            exportCtx.fillRect(0, 0, w, h);
-
-            // 2. Draw the main canvas content (this covers the white with drawings, 
-            //    but keeps erased areas as white)
-            exportCtx.drawImage(drawingCanvas, 0, 0);
-
-            return exportCanvas.toDataURL(mimeType, 1.0);
-        }
-
-        /**
-         * Clears and draws a canvas state from a data URL.
-         * @param {string} dataURL The canvas state as a data URL (which now includes the white background).
-         */
-        function restoreDrawingCanvas(dataURL) {
-            const width = drawingCanvas.width;
-            const height = drawingCanvas.height;
-            const img = new Image();
-            
-            img.onload = () => {
-                // Clear the main canvas completely to transparent
-                ctx.clearRect(0, 0, width, height);
-                
-                // Set the composite operation back to default before drawing the image
-                ctx.globalCompositeOperation = 'source-over'; 
-                
-                // Draw the historical image (which contains the white background)
-                ctx.drawImage(img, 0, 0, width, height); 
-                updateUndoRedoButtons();
-            };
-            img.src = dataURL;
-        }
-
-
-        /**
-         * Initializes the canvas sizes to fill the container and sets up event listeners.
-         */
+        // Initializes the canvas sizes to fill the container and sets up event listeners
         function initializeCanvases() {
             const container = drawingCanvas.parentElement;
             const updateCanvasDimensions = () => {
                 const width = container.clientWidth;
                 const height = container.clientHeight;
-
-                let currentHistoryState = null;
-
-                // Capture the state before resizing to prevent data loss
-                if (historyIndex > -1) {
-                    currentHistoryState = history[historyIndex];
+                // Capture current state index before resize
+                const currentIdx = historyIndex;
+                // Save current pixel state to avoid losing content during resize
+                let currentEntry = null;
+                if (currentIdx > -1 && history[currentIdx]) {
+                    currentEntry = history[currentIdx];
                 }
-
-                // Set canvas element dimensions
+                // Resize canvases
                 drawingCanvas.width = width;
                 drawingCanvas.height = height;
                 overlayCanvas.width = width;
                 overlayCanvas.height = height;
-
-                // Restore image data or save initial state
-                if (currentHistoryState) {
-                    restoreDrawingCanvas(currentHistoryState);
+                // If we had a saved current entry, restore it (this will scale it if needed)
+                if (currentEntry) {
+                    restoreHistoryEntry(currentEntry);
                 } else {
-                    // Initial save of the blank canvas state
+                    // Start with a blank canvas and save initial state
+                    ctx.clearRect(0, 0, width, height);
                     saveState();
                 }
-
                 // Set initial context properties after resizing
                 ctx.lineJoin = 'round';
             };
-
             // Set initial dimensions and listen for resize events
             updateCanvasDimensions();
             window.addEventListener('resize', updateCanvasDimensions);
         }
 
-        // --- History Management Functions ---
+        // HISTORY MANAGEMENT VARIABLES AND FUNCTIONS
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY_SIZE = 25; // Limit history size to prevent memory issues
 
-        /**
-         * Saves the current canvas state (as a DataURL) to the history array.
-         */
+        function restoreDrawingCanvas(dataURL) {
+            const width = drawingCanvas.width;
+            const height = drawingCanvas.height;
+            const img = new Image();
+            img.onload = () => {
+                // Clear the main canvas completely to transparent
+                ctx.clearRect(0, 0, width, height);
+                // Set the composite operation back to default before drawing the image
+                ctx.globalCompositeOperation = 'source-over';
+                // Draw the historical image (which contains the white background)
+                ctx.drawImage(img, 0, 0, width, height);
+                updateUndoRedoButtons();
+            };
+            img.src = dataURL;
+        }
+
         function saveState() {
-            // If the index is not at the end, clear out the 'future' (redo) states
+            // if there's redo states after current index, drop them
             if (historyIndex < history.length - 1) {
                 history = history.slice(0, historyIndex + 1);
             }
 
-            // FIXED: Use helper to get state with forced white background
-            const dataURL = createDataURLForHistory();
-
-            // Add the new state
-            history.push(dataURL);
+            const w = drawingCanvas.width;
+            const h = drawingCanvas.height;
+            // Get the image data (preserves alpha)
+            const imageData = ctx.getImageData(0, 0, w, h);
+            // Push a clone of ImageData to avoid referencing the same buffer
+            // Note: ImageData's data is a typed array; we clone it.
+            const cloned = new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height);
+            history.push({ imageData: cloned, width: w, height: h });
             historyIndex++;
-
-            // Trim the history if it exceeds the max size
+            // Trim history to keep it within MAX_HISTORY_SIZE
             if (history.length > MAX_HISTORY_SIZE) {
-                history.shift(); // Remove the oldest state
-                historyIndex--; // Adjust the index
+                history.shift();
+                historyIndex--;
             }
+            updateUndoRedoButtons();
+        }
+
+        // Restore a saved ImageData state (handles size mismatch by scaling)
+        function restoreHistoryEntry(entry) {
+            if (!entry) return;
+
+            const w = drawingCanvas.width;
+            const h = drawingCanvas.height;
+
+            // If entry size exactly matches current canvas size, putImageData directly
+            if (entry.width === w && entry.height === h) {
+                ctx.putImageData(entry.imageData, 0, 0);
+                updateUndoRedoButtons();
+                return;
+            }
+
+            // Otherwise, draw to a temporary canvas and scale to current canvas
+            const tmp = document.createElement('canvas');
+            tmp.width = entry.width;
+            tmp.height = entry.height;
+            const tmpCtx = tmp.getContext('2d');
+            // Put the ImageData on temp canvas
+            tmpCtx.putImageData(entry.imageData, 0, 0);
+            // Clear main canvas then draw scaled image onto it
+            ctx.clearRect(0, 0, w, h);
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.drawImage(tmp, 0, 0, w, h);
 
             updateUndoRedoButtons();
         }
 
-        /**
-         * Loads a canvas state from the history array.
-         * @param {number} index The index of the state to load.
-         */
+        // Loads a canvas state from the history array.
         function loadState(index) {
             if (index >= 0 && index < history.length) {
                 historyIndex = index;
@@ -284,32 +265,28 @@
             }
         }
 
-        /**
-         * Enables/Disables the Undo/Redo buttons based on the current history index.
-         */
-        function updateUndoRedoButtons() {
-            if (undoBtn) {
-                // Can undo if the current state is not the very first (0) state.
-                undoBtn.disabled = historyIndex <= 0;
-            }
-            if (redoBtn) {
-                // Can redo if the current state is not the last state in the array.
-                redoBtn.disabled = historyIndex >= history.length - 1;
+        // Load a history state by index
+        function loadState(index) {
+            if (index >= 0 && index < history.length) {
+                historyIndex = index;
+                const entry = history[historyIndex];
+                restoreHistoryEntry(entry);
             }
         }
 
-        // --- Cursor Functions ---
+        // Enables/Disables the Undo/Redo buttons based on the current history index.
+        function updateUndoRedoButtons() {
+            if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+            if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+        }
 
-        /**
-         * Clears the cursor drawn on the overlay canvas.
-         */
+        // CURSOR DRAWING LOGIC
+        // Clears the cursor drawn on the overlay canvas.
         function clearCursorOverlay() {
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         }
 
-        /**
-         * Draws the custom cursor on the overlay canvas, reflecting size and tip shape.
-         */
+        // Draws the custom cursor on the overlay canvas, reflecting size and tip shape.
         function drawCursor(x, y) {
             clearCursorOverlay();
 
@@ -332,11 +309,9 @@
             overlayCtx.stroke();
         }
 
-        // --- Drawing Logic ---
-
-        /**
-         * Main drawing function. Determines whether to use line or stamp based on tip.
-         */
+        // DRAWING LOGIC
+        
+        // Main drawing function. Determines whether to use line or stamp based on tip.
         function draw(x, y) {
             if (!isDrawing) return;
 
@@ -353,33 +328,30 @@
             [lastX, lastY] = [x, y];
         }
 
-        /**
-         * Sets drawing parameters and draws a standard lineTo stroke (for round brush/eraser).
-         */
+        
+        // Sets drawing parameters and draws a standard lineTo stroke (for round brush/eraser).
         function drawSimpleLine(x, y) {
             // Set global composite operation for brush/eraser
             ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
-            
+
             // Only set strokeStyle if we are brushing (harmless for eraser, but cleaner)
             if (currentTool === 'brush') {
                 ctx.strokeStyle = brushColor;
             } else {
-                 // For eraser, the strokeStyle is irrelevant, but we ensure line properties are set
-                 ctx.strokeStyle = '#000000'; 
+                // For eraser, the strokeStyle is irrelevant, but we ensure line properties are set
+                ctx.strokeStyle = '#000000';
             }
 
             ctx.lineWidth = brushSize;
             ctx.lineCap = 'round';
-            
+
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
             ctx.lineTo(x, y);
             ctx.stroke();
         }
 
-        /**
-         * Sets drawing parameters and draws a segment as a series of squares (for square tips).
-         */
+        // Sets drawing parameters and draws a segment as a series of squares (for square tips).
         function drawStamp(x, y) {
             const dx = x - lastX;
             const dy = y - lastY;
@@ -400,26 +372,23 @@
             for (let i = 0; i <= steps; i++) {
                 const currentX = lastX + stepX * i;
                 const currentY = lastY + stepY * i;
-
                 // Draw a square stamp centered at (currentX, currentY)
                 ctx.fillRect(currentX - halfSize, currentY - halfSize, brushSize, brushSize);
             }
         }
 
-
-        // --- Control Event Listeners ---
+        // CONTROL EVENT LISTENERS
 
         // Tool Selection (Brush/Eraser)
         toolButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const tool = button.getAttribute('data-tool');
                 currentTool = tool;
-
                 // Update active button styling
                 toolButtons.forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
             });
-             // Set initial active state for the brush
+            // Set initial active state for the brush
             if (button.getAttribute('data-tool') === 'brush') {
                 button.classList.add('active');
             }
@@ -448,9 +417,9 @@
         // Clear Canvas Button
         document.getElementById('clearBtn').addEventListener('click', () => {
             // Ensure composite operation is source-over before clearing the whole thing
-            ctx.globalCompositeOperation = 'source-over'; 
+            ctx.globalCompositeOperation = 'source-over';
             ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-            saveState(); // Save the cleared state
+            saveState();
         });
 
         // Undo Button
@@ -473,68 +442,62 @@
 
 
         // Export Dropdown Listener
-        // Export Dropdown Listener (fixed for transparent PNG)
-document.querySelector('.exportDropdown').addEventListener('click', (e) => {
-    e.preventDefault();
-    const target = e.target.closest('[data-export]');
-    if (!target) return;
-    const exportType = target.getAttribute('data-export');
+        document.querySelector('.exportDropdown').addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('[data-export]');
+            if (!target) return;
+            const exportType = target.getAttribute('data-export');
 
-    const downloadImage = (url, filename) => {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    };
+            const downloadImage = (url, filename) => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
 
-    // Helper for white background export (reuse undo/redo-safe snapshot)
-    const getWhiteBackgroundImage = (mimeType) => createDataURLForHistory(mimeType);
+            // Create white-background data URL from current canvas (without changing actual canvas)
+            const getWhiteBackgroundDataURL = (mimeType = 'image/png') => {
+                const tmp = document.createElement('canvas');
+                tmp.width = drawingCanvas.width;
+                tmp.height = drawingCanvas.height;
+                const tmpCtx = tmp.getContext('2d');
 
-    // Helper for transparent PNG export (draw canvas as-is)
-    const getTransparentImage = () => {
-        // Create a copy canvas to ensure full alpha is preserved
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = drawingCanvas.width;
-        exportCanvas.height = drawingCanvas.height;
-        const exportCtx = exportCanvas.getContext('2d');
+                // Fill white background then draw the main canvas on top (preserves alpha drawn over white)
+                tmpCtx.fillStyle = '#ffffff';
+                tmpCtx.fillRect(0, 0, tmp.width, tmp.height);
+                tmpCtx.drawImage(drawingCanvas, 0, 0);
+                return tmp.toDataURL(mimeType, 1.0);
+            };
 
-        // Copy drawing directly (keeps alpha transparency intact)
-        exportCtx.drawImage(drawingCanvas, 0, 0);
+            let url = '';
+            let filename = '';
 
-        return exportCanvas.toDataURL('image/png', 1.0);
-    };
+            if (exportType === 'png_white') {
+                url = getWhiteBackgroundDataURL('image/png');
+                filename = 'signature_white_bg.png';
+            } else if (exportType === 'png_transparent') {
+                // Transparent export: get the canvas as-is (alpha preserved)
+                url = drawingCanvas.toDataURL('image/png', 1.0);
+                filename = 'signature_transparent.png';
+            } else if (exportType === 'jpeg') {
+                url = getWhiteBackgroundDataURL('image/jpeg');
+                filename = 'signature.jpeg';
+            }
 
-    let url = '';
-    let filename = '';
+            if (url) downloadImage(url, filename);
+        });
 
-    if (exportType === 'png_white') {
-        url = getWhiteBackgroundImage('image/png');
-        filename = 'signature_white_bg.png';
-    } else if (exportType === 'png_transparent') {
-        url = getTransparentImage();
-        filename = 'signature_transparent.png';
-    } else if (exportType === 'jpeg') {
-        url = getWhiteBackgroundImage('image/jpeg');
-        filename = 'signature.jpeg';
-    }
+        // Canvas Interaction Listeners: Mouse & Touch
 
-    if (url) downloadImage(url, filename);
-});
-
-
-        // --- Canvas Interaction Listeners: Mouse & Touch ---
-        
-        /**
-         * Calculates coordinates for both mouse and touch events.
-         */
+        // Calculates coordinates for both mouse and touch events.
         function getCoords(e) {
             const rect = drawingCanvas.getBoundingClientRect();
             // Check for touch event first
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
+
             return {
                 x: clientX - rect.left,
                 y: clientY - rect.top,
@@ -542,18 +505,15 @@ document.querySelector('.exportDropdown').addEventListener('click', (e) => {
             };
         }
 
-
         // 1. Handle pointer down (Mouse & Touch Start)
         const startDrawing = (e) => {
             const { x, y } = getCoords(e);
-            
             // For touch events, prevent default behavior (like scrolling/zooming)
             if (e.touches) {
-                e.preventDefault(); 
+                e.preventDefault();
             }
-            
             // Only respond to left click (mouse button 0) or touch
-            if (e.button !== 0 && !e.touches) return; 
+            if (e.button !== 0 && !e.touches) return;
 
             isDrawing = true;
             [lastX, lastY] = [x, y];
@@ -568,18 +528,18 @@ document.querySelector('.exportDropdown').addEventListener('click', (e) => {
             // Remove cursor on drawing start
             clearCursorOverlay();
         };
-        
+
         // 2. Handle pointer move (Mouse & Touch Move)
         const moveDrawing = (e) => {
             const { x, y, isTouch } = getCoords(e);
-            
+
             if (isTouch) {
                 e.preventDefault();
             }
 
             // Only draw cursor for mouse, as touch devices don't benefit from it
             if (!isTouch) {
-                 drawCursor(x, y);
+                drawCursor(x, y);
             }
 
             if (isDrawing) {
@@ -595,7 +555,7 @@ document.querySelector('.exportDropdown').addEventListener('click', (e) => {
             }
             isDrawing = false;
         };
-        
+
         // Listener Assignments
         drawingCanvas.addEventListener('mousedown', startDrawing);
         drawingCanvas.addEventListener('mousemove', moveDrawing);
@@ -604,12 +564,11 @@ document.querySelector('.exportDropdown').addEventListener('click', (e) => {
             stopDrawing();
             clearCursorOverlay(); // Remove cursor when mouse leaves the canvas area
         });
-        
+
         // Touch Listeners
         drawingCanvas.addEventListener('touchstart', startDrawing);
         drawingCanvas.addEventListener('touchmove', moveDrawing);
         drawingCanvas.addEventListener('touchend', stopDrawing);
-
 
         // Initialize everything on load
         window.onload = initializeCanvases;
