@@ -65,6 +65,10 @@
             display: flex;
             align-items: center;
         }
+
+        #sigModal {
+            padding: 0px !important;
+        }
     </style>
 
 </head>
@@ -129,7 +133,7 @@
                         </button>
 
                         <div class="dropdown m-2 align-self-center">
-                            <button class="btn btn-secondary dropdown-toggle" type="button" id="tipDropdown"
+                            <button class="btn btn-secondary dropdown-toggle"style="min-width: 145px;" type="button" id="tipDropdown"
                                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
                                 title="Brush Tip Shape">
                                 Type: <span id="currentTipText" class="ml-2 font-weight-bold">Round</span>
@@ -165,7 +169,7 @@
                         <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color m-2"
                             style="width: 48px; cursor: pointer;" title="Brush Color">
 
-                        <input type="range" id="sizeSlider" min="2" max="50" value="10"
+                        <input type="range" id="sizeSlider" min="1" max="25" value="10"
                             class="custom-range align-self-center m-2" style="width: 100px; height: 48px;"
                             title="Brush Size">
                         <span id="sizeValue" class="h5 font-weight-semibold align-self-center text-center m-2"
@@ -548,11 +552,11 @@
         }
 
         let lastMidX = 0, lastMidY = 0;
+        let currentSize = 0; // smooth transition tracker
 
         function drawSmoothLine(x, y) {
             ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
 
-            // Calculate midpoints for smooth interpolation
             const midX = (lastX + x) / 2;
             const midY = (lastY + y) / 2;
 
@@ -561,30 +565,35 @@
             const dy = y - lastY;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // Map speed to stroke dynamics
-            const maxSpeed = 25;
+            // Speed and pressure behavior ---
+            const maxSpeed = 30; // Controls how quickly brush shrinks when moving fast
             const speedFactor = Math.min(distance / maxSpeed, 1);
 
-            const dynamicSize = brushSize * (1.3 - speedFactor * 0.9);
-            // const alpha = 0.8 - speedFactor * 0.4;
+            const targetSize = brushSize * (1.3 - speedFactor * 1.25); // Controls how thin it gets when fast
+
+            // Easing (smaller = slower recovery to normal)
+            const easing = 0.08; // Controls how slowly brush width returns to normal
+            if (currentSize === 0) currentSize = targetSize;
+            currentSize += (targetSize - currentSize) * easing;
+
             const alpha = 1;
 
-            ctx.lineWidth = dynamicSize;
+            // --- Drawing setup ---
+            ctx.lineWidth = currentSize;
             ctx.strokeStyle = brushColor;
             ctx.globalAlpha = alpha;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            // Smooth interpolation using quadratic curve
+            // --- Smooth curve ---
             ctx.beginPath();
             ctx.moveTo(lastMidX || lastX, lastMidY || lastY);
             ctx.quadraticCurveTo(lastX, lastY, midX, midY);
             ctx.stroke();
 
-            // Update midpoints for next iteration
+            // --- Update for next step ---
             lastMidX = midX;
             lastMidY = midY;
-
             ctx.globalAlpha = 1;
         }
 
