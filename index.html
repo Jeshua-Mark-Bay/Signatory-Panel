@@ -86,33 +86,62 @@
 <body class="py-5">
 
     <div class="container">
+        <div class="d-flex">
+            <table id="activityTable" class="table table-bordered mt-3">
+                <thead>
+                    <tr>
+                    <th>No.</th>
+                    <th>Activity</th>
+                    <th>Name</th>
+                    <th>Signature</th>
+                    <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <script>
+                    for (let i = 1; i <= 8; i++) {
+                        document.write(`
+                        <tr>
+                            <td>${i}</td>
+                            <td>Activity ${i}</td>
+                            <td>Name ${i}</td>
+                            <td><img class="signature-preview img-thumbnail" width="120" height="60" alt="Signature ${i}"></td>
+                            <td><button class="btnSign btn btn-sm btn-primary" data-title="Sign Field 1" data-image-view="sig-img1" data-toggle="modal" data-target="#sigModal">Sign</button></td>
+                        </tr>
+                        `);
+                    }
+                    </script>
+                </tbody>
+            </table>
+        </div>
+
         <div class="d-flex flex-column gap-3">
 
             <!-- Row 1 -->
             <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
                 <img src="" id="sig-img1" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
-                <button class="btn btn-primary sign-btn" data-title="Sign Field 1" data-index="1" data-toggle="modal"
+                <button class="btn btn-primary btnSignFixed" data-title="Sign Field 1" data-image-view="sig-img1" data-toggle="modal"
                     data-target="#sigModal">Sign</button>
             </div>
 
             <!-- Row 2 -->
             <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
                 <img src="" id="sig-img2" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
-                <button class="btn btn-primary sign-btn" data-title="Sign Field 2" data-index="2" data-toggle="modal"
+                <button class="btn btn-primary btnSignFixed" data-title="Sign Field 2" data-image-view="sig-img2" data-toggle="modal"
                     data-target="#sigModal">Sign</button>
             </div>
 
             <!-- Row 3 -->
             <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
                 <img src="" id="sig-img3" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
-                <button class="btn btn-primary sign-btn" data-title="Sign Field 3" data-index="3" data-toggle="modal"
+                <button class="btn btn-primary btnSignFixed" data-title="Sign Field 3" data-image-view="sig-img3" data-toggle="modal"
                     data-target="#sigModal">Sign</button>
             </div>
 
             <!-- Row 4 -->
             <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
                 <img src="" id="sig-img4" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
-                <button class="btn btn-primary sign-btn" data-title="Sign Field 4" data-index="4" data-toggle="modal"
+                <button class="btn btn-primary btnSignFixed" data-title="Sign Field 4" data-image-view="sig-img4" data-toggle="modal"
                     data-target="#sigModal">Sign</button>
             </div>
 
@@ -244,13 +273,31 @@
     </div>
 
     <script>
-        let activeIndex = null;
         let SIGN_IMAGE_WIDTH = 750;
         let SIGN_IMAGE_HEIGHT  = 425;
 
+        // Initialize canvases only when the modal is fully visible
+        $('#sigModal').on('show.bs.modal', function () {
+            // Hide the canvas visually during fade-in to prevent old signature flicker
+            $('.canvas-container').css('opacity', 0);
+
+            // Clear immediately before fade animation begins
+            if (ctx && drawingCanvas.width > 0 && drawingCanvas.height > 0) {
+                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                history = [];
+                historyIndex = -1;
+                saveState();
+            }
+        });
+
+        $('#sigModal').on('shown.bs.modal', function () {
+            initializeCanvases();
+            // Fade back the canvas container
+            $('.canvas-container').css('opacity', 1);
+        });
+
         $('#sigModal').on('show.bs.modal', function (event) {
             const button = $(event.relatedTarget);
-            activeIndex = button.data('index');
             const title = button.data('title') || "Sign Field";
             $('#sigModalTitle').text(title);
 
@@ -327,49 +374,40 @@
                 });
         }
 
-        // Apply button logic
-        $('#applyBtn').on('click', function () {
-            if (!activeIndex) return;
+        let currentSignatureTarget = null;
 
-            // Create an offscreen canvas fixed at 750x425 for export
-            const exportWidth = SIGN_IMAGE_WIDTH;
-            const exportHeight = SIGN_IMAGE_HEIGHT ;
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = exportWidth;
-            exportCanvas.height = exportHeight;
-            const exportCtx = exportCanvas.getContext('2d');
+        // For 4 fixed signature buttons (already using data-target)
+        document.querySelectorAll('.btnSignFixed').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.getAttribute('data-image-view');
+                currentSignatureTarget = document.getElementById(targetId);
+            });
+        });
 
-            // Draw current canvas scaled to exactly 750x425
-            exportCtx.drawImage(drawingCanvas, 0, 0, exportWidth, exportHeight);
+        // For 8 table rows (class-based)
+        document.querySelectorAll('.btnSign').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentSignatureTarget = btn.closest('tr').querySelector('.signature-preview');
+            });
+        });
 
-            // Get a fixed-size PNG
-            const dataURL = exportCanvas.toDataURL('image/png');
-
+        $('#applyBtn').on('click', function () { 
+            console.log("Nice")
+            console.log(currentSignatureTarget);
+            if (!currentSignatureTarget) return; 
+            // Create an offscreen canvas fixed at 750x425 for export 
+            const exportCanvas = document.createElement('canvas'); 
+            exportCanvas.width = SIGN_IMAGE_WIDTH; 
+            exportCanvas.height = SIGN_IMAGE_HEIGHT; 
+            const exportCtx = exportCanvas.getContext('2d'); 
+            // Draw current canvas scaled to exactly 750x425 
+            exportCtx.drawImage(drawingCanvas, 0, 0, SIGN_IMAGE_WIDTH, SIGN_IMAGE_HEIGHT); 
+            // Get a fixed-size PNG 
+            const dataURL = exportCanvas.toDataURL('image/png'); 
             // Apply to the correct preview image
-            const img = document.getElementById('sig-img' + activeIndex);
-            img.src = dataURL;
+            currentSignatureTarget.src = dataURL;
 
-            $('#sigModal').modal('hide');
-        });
-
-        // Initialize canvases only when the modal is fully visible
-        $('#sigModal').on('show.bs.modal', function () {
-            // Hide the canvas visually during fade-in to prevent old signature flicker
-            $('.canvas-container').css('opacity', 0);
-
-            // Clear immediately before fade animation begins
-            if (ctx && drawingCanvas.width > 0 && drawingCanvas.height > 0) {
-                ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-                history = [];
-                historyIndex = -1;
-                saveState();
-            }
-        });
-
-        $('#sigModal').on('shown.bs.modal', function () {
-            initializeCanvases();
-            // Fade back the canvas container
-            $('.canvas-container').css('opacity', 1);
+            $('#sigModal').modal('hide'); 
         });
 
     </script>
