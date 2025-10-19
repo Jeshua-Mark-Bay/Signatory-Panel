@@ -288,6 +288,15 @@
                 historyIndex = -1;
                 saveState();
             }
+
+            document.getElementById('brushBtn')?.click();
+            document.getElementById('currentTipText').textContent = "Round";
+            brushTip = 'round';
+            document.getElementById('colorPicker').value = '#000000';
+            brushColor = '#000000';
+            document.getElementById('sizeSlider').value = 10;
+            document.getElementById('sizeValue').textContent = "10";
+            brushSize = 10;
         });
 
         $('#sigModal').on('shown.bs.modal', function () {
@@ -473,7 +482,7 @@
                 history = [];
                 historyIndex = -1;
                 saveState();
-                
+
             // Recalculate display scaling whenever window resizes
             window.addEventListener('resize', resizeCanvasDisplay);
         }
