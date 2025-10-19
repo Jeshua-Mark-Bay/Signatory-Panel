@@ -7,14 +7,11 @@
     <title>Bootstrap Signature Modal</title>
 
     <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-        crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
-        crossorigin="anonymous"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
+    
     <style>
         .canvas-container {
             position: relative;
@@ -69,6 +66,19 @@
         #sigModal {
             padding: 0px !important;
         }
+
+        .active-tool {
+            transform: scale(1.05);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-primary.active-tool {
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.4);
+        }
+
+        .btn-danger.active-tool {
+            box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.4);
+        }
     </style>
 
 </head>
@@ -109,8 +119,7 @@
         </div>
     </div>
 
-    <!-- ===== Bootstrap Modal ===== -->
-    <div class="modal" id="sigModal" tabindex="-1" role="dialog" aria-labelledby="sigModalTitle" aria-hidden="true">
+    <div class="modal fade" id="sigModal" tabindex="-1" role="dialog" data-backdrop="static" aria-labelledby="sigModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -120,97 +129,115 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <div class="d-flex flex-wrap justify-content-center align-items-center">
-                        <button id="brushBtn" data-tool="brush"
-                            class="control-button tool-button active btn btn btn-primary btn-icon m-2"
-                            title="Brush Tool">
-                            <i class="fas fa-pen"></i>
-                        </button>
+                    <div class="row">
 
-                        <button id="eraserBtn" data-tool="eraser"
-                            class="control-button tool-button btn btn-danger btn-icon m-2" title="Eraser Tool">
-                            <i class="fas fa-eraser"></i>
-                        </button>
-
-                        <div class="dropdown m-2 align-self-center">
-                            <button class="btn btn-secondary dropdown-toggle"style="min-width: 145px;" type="button" id="tipDropdown"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
-                                title="Brush Tip Shape">
-                                Type: <span id="currentTipText" class="ml-2 font-weight-bold">Round</span>
-                            </button>
-                            <div class="dropdown-menu" aria-labelledby="tipDropdown">
-                                <a class="dropdown-item" href="#" data-tip="round">
-                                    <div
-                                        style="width: 12px; height: 12px; border-radius: 50%; background-color: #000; display: inline-block; margin-right: 8px;">
-                                    </div>
-                                    Round
-                                </a>
-                                <a class="dropdown-item" href="#" data-tip="square">
-                                    <div
-                                        style="width: 12px; height: 12px; background-color: #000; display: inline-block; margin-right: 8px;">
-                                    </div>
-                                    Square
-                                </a>
-                                <a class="dropdown-item" href="#" data-tip="rusty">
-                                    <div
-                                        style="width: 12px; height: 12px; background: linear-gradient(45deg, #454444, #c6c6c6); display: inline-block; margin-right: 8px;">
-                                    </div>
-                                    Rusty
-                                </a>
-                                <a class="dropdown-item" href="#" data-tip="smooth">
-                                    <div
-                                        style="width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at center, #000000, #efefef); display: inline-block; margin-right: 8px;">
-                                    </div>
-                                    Smooth
-                                </a>
+                        <div class="col-12 order-1 order-lg-2">
+                            <div class="canvas-container mt-2">
+                                <canvas id="drawingCanvas"></canvas>
+                                <canvas id="overlayCanvas"></canvas>
                             </div>
                         </div>
 
-                        <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color m-2"
-                            style="width: 48px; cursor: pointer;" title="Brush Color">
+                        <div class="col-12 order-2 order-lg-1">
+                            <div class="d-flex flex-wrap justify-content-center align-items-center">
 
-                        <input type="range" id="sizeSlider" min="1" max="25" value="10"
-                            class="custom-range align-self-center m-2" style="width: 100px; height: 48px;"
-                            title="Brush Size">
-                        <span id="sizeValue" class="h5 font-weight-semibold align-self-center text-center m-2"
-                            style="min-width: 30px;">10</span>
+                                <button id="brushBtn" data-tool="brush"
+                                    class="control-button tool-button btn btn-primary btn-sm btn-icon m-1 m-md-2 active-tool"
+                                    title="Draw Tool">
+                                    <i class="fas fa-pen"></i>
+                                </button>
 
-                        <button id="undoBtn" class="btn btn-secondary btn-icon m-2" title="Undo" disabled>
-                            <i class="fas fa-undo"></i>
-                        </button>
+                                <button id="eraserBtn" data-tool="eraser"
+                                    class="control-button tool-button btn btn-danger btn-sm btn-icon m-1 m-md-2" title="Eraser Tool">
+                                    <i class="fas fa-eraser"></i>
+                                </button>
 
-                        <button id="redoBtn" class="btn btn-secondary btn-icon m-2" title="Redo" disabled>
-                            <i class="fas fa-redo"></i>
-                        </button>
+                                <div class="dropdown m-1 m-md-2 align-self-center">
+                                    <button class="btn btn-secondary btn-sm dropdown-toggle" style="min-width: 130px;" type="button" id="tipDropdown"
+                                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                        title="Brush Tip Shape">
+                                        Type: <span id="currentTipText" class="ml-2 font-weight-bold">Round</span>
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="tipDropdown" style="list-style: none; margin: 0; padding: 0;">
+                                        <li class="dropdown-item drawTypeDropdown" data-tip="round" style="cursor: pointer;">
+                                            <span style="
+                                                width: 12px; height: 12px; border-radius: 50%;
+                                                background-color: #000; display: inline-block; margin-right: 8px;">
+                                            </span>
+                                            Round
+                                        </li>
 
-                        <button id="clearBtn" class="btn btn-light btn-icon text-dark m-2" title="Clear Canvas">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                                        <li class="dropdown-item drawTypeDropdown" data-tip="square" style="cursor: pointer;">
+                                            <span style="
+                                                width: 12px; height: 12px;
+                                                background-color: #000; display: inline-block; margin-right: 8px;">
+                                            </span>
+                                            Square
+                                        </li>
 
-                        <div class="dropdown m-2 align-self-center">
-                            <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
-                                title="Export Drawing">
-                                <i class="fas fa-download mr-2"></i> Export
-                            </button>
-                            <div class="exportDropdown dropdown-menu" aria-labelledby="exportDropdown">
-                                <a class="dropdown-item" href="#" data-export="png_white">PNG (White Background)</a>
-                                <a class="dropdown-item" href="#" data-export="jpeg">JPEG (White Background)</a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="#" data-export="png_transparent">PNG (Transparent)</a>
+                                        <li class="dropdown-item drawTypeDropdown" data-tip="rusty" style="cursor: pointer;">
+                                            <span style="
+                                                width: 12px; height: 12px;
+                                                background: linear-gradient(45deg, #454444, #c6c6c6);
+                                                display: inline-block; margin-right: 8px;">
+                                            </span>
+                                            Rusty
+                                        </li>
+
+                                        <li class="dropdown-item drawTypeDropdown" data-tip="smooth" style="cursor: pointer;">
+                                            <span style="
+                                                width: 12px; height: 12px; border-radius: 50%;
+                                                background: radial-gradient(circle at center, #000000, #efefef);
+                                                display: inline-block; margin-right: 8px;">
+                                            </span>
+                                            Smooth
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color m-1 m-md-2"
+                                    style="width: 40px; cursor: pointer; height: 40px;" title="Brush Color">
+
+                                <input type="range" id="sizeSlider" min="1" max="25" value="10"
+                                    class="custom-range align-self-center m-1 m-md-2" style="width: 85px; height: 40px;"
+                                    title="Brush Size">
+                                <span id="sizeValue" class="h6 font-weight-semibold align-self-center text-center m-1 m-md-2"
+                                    style="min-width: 25px;">10</span>
+
+                                <button id="undoBtn" class="btn btn-secondary btn-sm btn-icon m-1 m-md-2" title="Undo" disabled>
+                                    <i class="fas fa-undo"></i>
+                                </button>
+
+                                <button id="redoBtn" class="btn btn-secondary btn-sm btn-icon m-1 m-md-2" title="Redo" disabled>
+                                    <i class="fas fa-redo"></i>
+                                </button>
+
+                                <button id="clearBtn" class="btn btn-light btn-sm btn-icon text-dark m-1 m-md-2" title="Clear Canvas">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+
+                                <div class="dropdown m-1 m-md-2 align-self-center">
+                                    <button class="btn btn-success btn-sm dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown"
+                                        aria-haspopup="true" aria-expanded="false" title="Export Drawing">
+                                        <i class="fas fa-download mr-2"></i> Export
+                                    </button>
+                                
+                                    <ul class="exportDropdown dropdown-menu" aria-labelledby="exportDropdown" style="list-style: none; margin: 0; padding: 0;">
+                                        <li class="dropdown-item" data-export="png_white" style="cursor: pointer;">PNG (White Background)</li>
+                                        <li class="dropdown-item" data-export="jpeg" style="cursor: pointer;">JPEG (White Background)</li>
+                                        <li>
+                                            <hr class="dropdown-divider">
+                                        </li>
+                                        <li class="dropdown-item" data-export="png_transparent" style="cursor: pointer;">PNG (Transparent)</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="canvas-container mt-2">
-                        <canvas id="drawingCanvas"></canvas>
-                        <canvas id="overlayCanvas"></canvas>
-                    </div>
-
                 </div>
                 <div class="modal-footer">
                     <button type="button" id="applyBtn" class="btn btn-primary">Apply</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" id="cancelBtn" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
         </div>
@@ -218,27 +245,110 @@
 
     <script>
         let activeIndex = null;
+        let SIGN_IMAGE_WIDTH = 750;
+        let SIGN_IMAGE_HEIGHT  = 425;
 
-        // Open modal with correct title
         $('#sigModal').on('show.bs.modal', function (event) {
             const button = $(event.relatedTarget);
             activeIndex = button.data('index');
             const title = button.data('title') || "Sign Field";
             $('#sigModalTitle').text(title);
+
+            const tooltipMap = [
+                { id: 'brushBtn', label: 'Draw (Ctrl+D)' },
+                { id: 'eraserBtn', label: 'Eraser (Ctrl+E)' },
+                { id: 'undoBtn', label: 'Undo (Ctrl+Z)' },
+                { id: 'redoBtn', label: 'Redo (Ctrl+Y)' },
+                { id: 'clearBtn', label: 'Clear (Ctrl+K)' },
+                { id: 'applyBtn', label: 'Apply (Ctrl+Enter)' },
+                { id: 'sizeSlider', label: 'Brush Size (Ctrl+[ / Ctrl+])' },
+                { id: 'cancelBtn', label: 'Cancel (Ctrl+B)' }
+            ];
+
+            tooltipMap.forEach(t => {
+                const el = document.getElementById(t.id);
+                if (el) {
+                    el.setAttribute('title', t.label);
+                    el.setAttribute('data-toggle', 'tooltip');
+                    el.setAttribute('data-placement', 'top');
+                }
+            });
+
+            $('[data-toggle="tooltip"]').tooltip();
         });
+
+        document.addEventListener('keydown', function (e) {
+            const modalOpen = $('#sigModal').hasClass('show');
+            if (!modalOpen || !e.ctrlKey) return;
+
+            const key = e.key.toLowerCase();
+
+            // Define your custom Ctrl+key shortcuts
+            const shortcuts = ['d', 'e', 'z', 'y', 'k', 'b', 'c', '[', ']', 'enter', 'escape'];
+
+            // Only prevent default for your own shortcuts
+            if (shortcuts.includes(key)) e.preventDefault();
+
+            switch (key) {
+                case 'd': document.getElementById('brushBtn')?.click(); break;
+                case 'e': document.getElementById('eraserBtn')?.click(); break;
+                case 'z': document.getElementById('undoBtn')?.click(); break;
+                case 'y': document.getElementById('redoBtn')?.click(); break;
+                case 'k': document.getElementById('clearBtn')?.click(); break;
+                case 'enter': document.getElementById('applyBtn')?.click(); break;
+                case 'b': document.getElementById('cancelBtn')?.click(); break;
+                case 'escape': $('#sigModal').modal('hide'); break;
+                case '[': adjustBrushSize(-1); break;
+                case ']': adjustBrushSize(1); break;
+                case 'c': copyCanvasToClipboard(); break;
+            }
+        });
+
+        function adjustBrushSize(change) {
+            const slider = document.getElementById('sizeSlider');
+            if (slider) {
+                slider.value = Math.min(Math.max(parseInt(slider.value) + change, slider.min), slider.max);
+                slider.dispatchEvent(new Event('input'));
+            }
+        }
+
+        function copyCanvasToClipboard() {
+            const canvas = document.getElementById('drawingCanvas');
+            if (!canvas) return;
+
+            const dataURL = canvas.toDataURL('image/png');
+
+            navigator.clipboard.writeText(dataURL)
+                .then(() => {
+                    console.log('Canvas Data URL copied to clipboard');
+                })
+                .catch(err => {
+                    console.error('Failed to copy:', err);
+                });
+        }
 
         // Apply button logic
         $('#applyBtn').on('click', function () {
             if (!activeIndex) return;
 
-            // Get the current canvas as an image
-            const dataURL = drawingCanvas.toDataURL('image/png');
+            // Create an offscreen canvas fixed at 750x425 for export
+            const exportWidth = SIGN_IMAGE_WIDTH;
+            const exportHeight = SIGN_IMAGE_HEIGHT ;
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = exportWidth;
+            exportCanvas.height = exportHeight;
+            const exportCtx = exportCanvas.getContext('2d');
 
-            // Apply to the correct image
+            // Draw current canvas scaled to exactly 750x425
+            exportCtx.drawImage(drawingCanvas, 0, 0, exportWidth, exportHeight);
+
+            // Get a fixed-size PNG
+            const dataURL = exportCanvas.toDataURL('image/png');
+
+            // Apply to the correct preview image
             const img = document.getElementById('sig-img' + activeIndex);
             img.src = dataURL;
 
-            // Close modal
             $('#sigModal').modal('hide');
         });
 
@@ -273,7 +383,7 @@
         const sizeValueSpan = document.getElementById('sizeValue');
         // Control Buttons
         const toolButtons = document.querySelectorAll('.tool-button');
-        const tipDropdownItems = document.querySelectorAll('.dropdown-menu a[data-tip]');
+        const tipDropdownItems = document.querySelectorAll('.drawTypeDropdown[data-tip]');
         const currentTipText = document.getElementById('currentTipText');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
@@ -289,40 +399,45 @@
         let points = []; // recent stroke points
         let lastVelocity = 0;
         let lastWidth = brushSize;
-
+        let canvasScale = 1;
 
         // Initializes the canvas sizes to fill the container and sets up event listeners
-        function initializeCanvases() {
+        function resizeCanvasDisplay() {
             const container = drawingCanvas.parentElement;
-            const updateCanvasDimensions = () => {
-                const width = container.clientWidth;
-                const height = container.clientHeight;
-                // Capture current state index before resize
-                const currentIdx = historyIndex;
-                // Save current pixel state to avoid losing content during resize
-                let currentEntry = null;
-                if (currentIdx > -1 && history[currentIdx]) {
-                    currentEntry = history[currentIdx];
-                }
-                // Resize canvases
-                drawingCanvas.width = width;
-                drawingCanvas.height = height;
-                overlayCanvas.width = width;
-                overlayCanvas.height = height;
-                // If we had a saved current entry, restore it (this will scale it if needed)
-                if (currentEntry) {
-                    restoreHistoryEntry(currentEntry);
-                } else {
-                    // Start with a blank canvas and save initial state
-                    ctx.clearRect(0, 0, width, height);
-                    saveState();
-                }
-                // Set initial context properties after resizing
-                ctx.lineJoin = 'round';
-            };
-            // Set initial dimensions and listen for resize events
-            updateCanvasDimensions();
-            window.addEventListener('resize', updateCanvasDimensions);
+
+            // Compute scale factor based on visible size
+            canvasScale = Math.min(
+                container.clientWidth / SIGN_IMAGE_WIDTH,
+                container.clientHeight / SIGN_IMAGE_HEIGHT
+            );
+
+            // Apply visual scaling
+            drawingCanvas.style.width = `${SIGN_IMAGE_WIDTH * canvasScale}px`;
+            drawingCanvas.style.height = `${SIGN_IMAGE_HEIGHT * canvasScale}px`;
+            overlayCanvas.style.width = `${SIGN_IMAGE_WIDTH * canvasScale}px`;
+            overlayCanvas.style.height = `${SIGN_IMAGE_HEIGHT * canvasScale}px`;
+        }
+
+        function initializeCanvases() {
+            // Set internal pixel resolution ONCE (keeps high quality)
+            drawingCanvas.width = SIGN_IMAGE_WIDTH;
+            drawingCanvas.height = SIGN_IMAGE_HEIGHT;
+            overlayCanvas.width = SIGN_IMAGE_WIDTH;
+            overlayCanvas.height = SIGN_IMAGE_HEIGHT;
+
+            // Clear and save initial state
+            ctx.clearRect(0, 0, SIGN_IMAGE_WIDTH, SIGN_IMAGE_HEIGHT);
+            saveState();
+
+            // Apply initial CSS scaling
+            resizeCanvasDisplay();
+
+                history = [];
+                historyIndex = -1;
+                saveState();
+                
+            // Recalculate display scaling whenever window resizes
+            window.addEventListener('resize', resizeCanvasDisplay);
         }
 
         // HISTORY MANAGEMENT VARIABLES AND FUNCTIONS
@@ -605,12 +720,12 @@
                 const tool = button.getAttribute('data-tool');
                 currentTool = tool;
                 // Update active button styling
-                toolButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
+                toolButtons.forEach(btn => btn.classList.remove('active-tool'));
+                button.classList.add('active-tool');
             });
             // Set initial active state for the brush
             if (button.getAttribute('data-tool') === 'brush') {
-                button.classList.add('active');
+                button.classList.add('active-tool');
             }
         });
 
@@ -660,14 +775,23 @@
             });
         }
 
-
-        // Export Dropdown Listener
+        // Export Dropdown Listener (Fixed Size 750x425 for all)
         document.querySelector('.exportDropdown').addEventListener('click', (e) => {
             e.preventDefault();
             const target = e.target.closest('[data-export]');
             if (!target) return;
-            const exportType = target.getAttribute('data-export');
 
+            const exportType = target.getAttribute('data-export');
+            const exportWidth = SIGN_IMAGE_WIDTH;
+            const exportHeight = SIGN_IMAGE_HEIGHT;
+
+            // Create a fixed-size offscreen canvas
+            const tmp = document.createElement('canvas');
+            tmp.width = exportWidth;
+            tmp.height = exportHeight;
+            const tmpCtx = tmp.getContext('2d');
+
+            // Helper: download function
             const downloadImage = (url, filename) => {
                 const a = document.createElement('a');
                 a.href = url;
@@ -677,33 +801,31 @@
                 document.body.removeChild(a);
             };
 
-            // Create white-background data URL from current canvas (without changing actual canvas)
-            const getWhiteBackgroundDataURL = (mimeType = 'image/png') => {
-                const tmp = document.createElement('canvas');
-                tmp.width = drawingCanvas.width;
-                tmp.height = drawingCanvas.height;
-                const tmpCtx = tmp.getContext('2d');
-
-                // Fill white background then draw the main canvas on top (preserves alpha drawn over white)
-                tmpCtx.fillStyle = '#ffffff';
-                tmpCtx.fillRect(0, 0, tmp.width, tmp.height);
-                tmpCtx.drawImage(drawingCanvas, 0, 0);
-                return tmp.toDataURL(mimeType, 1.0);
-            };
-
             let url = '';
             let filename = '';
 
             if (exportType === 'png_white') {
-                url = getWhiteBackgroundDataURL('image/png');
+                // White background
+                tmpCtx.fillStyle = '#ffffff';
+                tmpCtx.fillRect(0, 0, exportWidth, exportHeight);
+                tmpCtx.drawImage(drawingCanvas, 0, 0, exportWidth, exportHeight);
+                url = tmp.toDataURL('image/png');
                 filename = 'signature_white_bg.png';
-            } else if (exportType === 'png_transparent') {
-                // Transparent export: get the canvas as-is (alpha preserved)
-                url = drawingCanvas.toDataURL('image/png', 1.0);
-                filename = 'signature_transparent.png';
+
             } else if (exportType === 'jpeg') {
-                url = getWhiteBackgroundDataURL('image/jpeg');
+                // White background (JPEG can't be transparent)
+                tmpCtx.fillStyle = '#ffffff';
+                tmpCtx.fillRect(0, 0, exportWidth, exportHeight);
+                tmpCtx.drawImage(drawingCanvas, 0, 0, exportWidth, exportHeight);
+                url = tmp.toDataURL('image/jpeg', 1.0);
                 filename = 'signature.jpeg';
+
+            } else if (exportType === 'png_transparent') {
+                // Transparent background (default)
+                tmpCtx.clearRect(0, 0, exportWidth, exportHeight);
+                tmpCtx.drawImage(drawingCanvas, 0, 0, exportWidth, exportHeight);
+                url = tmp.toDataURL('image/png', 1.0);
+                filename = 'signature_transparent.png';
             }
 
             if (url) downloadImage(url, filename);
@@ -714,15 +836,20 @@
         // Calculates coordinates for both mouse and touch events.
         function getCoords(e) {
             const rect = drawingCanvas.getBoundingClientRect();
-            // Check for touch event first
+
+            // Get mouse or touch position
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top,
-                isTouch: !!e.touches
-            };
+            // Calculate the current scale between internal pixels and visible CSS size
+            const scaleX = rect.width / drawingCanvas.width;
+            const scaleY = rect.height / drawingCanvas.height;
+
+            // Map cursor position to internal canvas coordinates
+            const x = (clientX - rect.left) / scaleX;
+            const y = (clientY - rect.top) / scaleY;
+
+            return { x, y, isTouch: !!e.touches };
         }
 
         // 1. Handle pointer down (Mouse & Touch Start)
