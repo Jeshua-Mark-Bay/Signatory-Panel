@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signature Fields with Modal</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 30px;
+    background: #f8f9fa;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-width: 600px;
+    margin: auto;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  }
+
+  .field img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+
+  .field input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+
+  .field button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .field button:hover {
+    background-color: #0069d9;
+  }
+
+  /* ===== Modal ===== */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(3px);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .modal-backdrop.show {
+    display: flex;
+    opacity: 1;
+  }
+
+  .modal {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    max-width: 400px;
+    width: 90%;
+    padding: 20px;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  .modal.show {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  .modal-header {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .modal-body {
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 20px;
+  }
+
+  .modal-footer {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .btn {
+    border: none;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .btn-apply {
+    background-color: #007bff;
+    color: white;
+  }
+
+  .btn-apply:hover {
+    background-color: #0069d9;
+  }
+
+  .btn-cancel {
+    background-color: #e0e0e0;
+  }
+
+  .btn-cancel:hover {
+    background-color: #cfcfcf;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="field">
+    <label>Prepared By</label>
+    <img src="" id="img1">
+    <button class="signBtn" data-title="Sign Field 1" data-index="1">Sign</button>
+  </div>
+  <div class="field">
+    <label>Reviewed By</label>
+    <img src="" id="img2">
+    <button class="signBtn" data-title="Sign Field 2" data-index="2">Sign</button>
+  </div>
+  <div class="field">
+    <label>Approved By</label>
+    <img src="" id="img3">
+    <button class="signBtn" data-title="Sign Field 3" data-index="3">Sign</button>
+  </div>
+  <div class="field">
+    <label>Confirmed By</label>
+    <img src="" id="img4">
+    <button class="signBtn" data-title="Sign Field 4" data-index="4">Sign</button>
+  </div>
+</div>
+
+<!-- ===== Modal ===== -->
+<div id="modalBackdrop" class="modal-backdrop">
+  <div id="customModal" class="modal">
+    
+    <div id="modalTitle" class="modal-header">Modal Title</div>
+    
+    <div class="modal-body">
+      Please confirm your signature for this field.
+    </div>
+    
+    <div class="modal-footer">
+      <button id="applyBtn" class="btn btn-apply">Apply</button>
+      <button id="cancelBtn" class="btn btn-cancel">Cancel</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modal = document.getElementById('customModal');
+const modalTitle = document.getElementById('modalTitle');
+const applyBtn = document.getElementById('applyBtn');
+const cancelBtn = document.getElementById('cancelBtn');
+let activeIndex = null;
+
+// Open modal
+document.querySelectorAll('.signBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeIndex = btn.dataset.index;
+    modalTitle.textContent = btn.dataset.title || "Sign Field";
+    modalBackdrop.classList.add('show');
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  });
+});
+
+// Close modal
+function closeModal() {
+  modalBackdrop.classList.remove('show');
+  modal.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+cancelBtn.addEventListener('click', closeModal);
+modalBackdrop.addEventListener('click', e => {
+  if (e.target === modalBackdrop) closeModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// Apply button
+applyBtn.addEventListener('click', () => {
+  if (!activeIndex) return;
+  const img = document.getElementById('img' + activeIndex);
+  
+  // Example: mark as "signed"
+  img.src = "https://dummyimage.com/60x60/28a745/ffffff&text=✔";
+
+  closeModal();
+});
+</script>
+</body>
+</html>
