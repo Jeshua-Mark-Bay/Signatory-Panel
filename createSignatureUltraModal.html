@@ -3,228 +3,674 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signature Fields with Modal</title>
+<title>Bootstrap Signature Modal</title>
+
+<!-- Bootstrap -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" crossorigin="anonymous"></script>
+
 <style>
-  body {
-    font-family: "Segoe UI", sans-serif;
-    margin: 0;
-    padding: 30px;
-    background: #f8f9fa;
-  }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 750px;
+            aspect-ratio: 16 / 9;
+            margin: 0 auto;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: white;
+        }
 
-  .container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    max-width: 600px;
-    margin: auto;
-  }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: none;
+        }
 
-  .field {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: white;
-    padding: 10px 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
-  }
+        #drawingCanvas {
+            z-index: 10;
+        }
 
-  .field img {
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-  }
+        #overlayCanvas {
+            z-index: 20;
+            pointer-events: none;
+        }
 
-  .field input {
-    flex: 1;
-    padding: 6px 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-  }
+        .control-button.active {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px #6366f1;
+        }
 
-  .field button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
+        .btn-icon {
+            padding: 0.75rem !important;
+            line-height: 1;
+        }
 
-  .field button:hover {
-    background-color: #0069d9;
-  }
+        .form-control-color {
+            height: 48px;
+            padding: 4px;
+            border: 2px solid #ccc;
+        }
 
-  /* ===== Modal ===== */
-  .modal-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    backdrop-filter: blur(3px);
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.25s ease;
-  }
+        .dropdown-toggle {
+            height: 48px;
+            display: flex;
+            align-items: center;
+        }
+    </style>
 
-  .modal-backdrop.show {
-    display: flex;
-    opacity: 1;
-  }
-
-  .modal {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    max-width: 400px;
-    width: 90%;
-    padding: 20px;
-    transform: scale(0.9);
-    opacity: 0;
-    transition: transform 0.25s ease, opacity 0.25s ease;
-  }
-
-  .modal.show {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  .modal-header {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-
-  .modal-body {
-    font-size: 0.95rem;
-    color: #333;
-    margin-bottom: 20px;
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .btn {
-    border: none;
-    padding: 10px 18px;
-    font-size: 0.95rem;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-  }
-
-  .btn-apply {
-    background-color: #007bff;
-    color: white;
-  }
-
-  .btn-apply:hover {
-    background-color: #0069d9;
-  }
-
-  .btn-cancel {
-    background-color: #e0e0e0;
-  }
-
-  .btn-cancel:hover {
-    background-color: #cfcfcf;
-  }
-</style>
 </head>
-<body>
+<body class="py-5">
 
 <div class="container">
-  <div class="field">
-    <label>Prepared By</label>
-    <img src="" id="img1">
-    <button class="signBtn" data-title="Sign Field 1" data-index="1">Sign</button>
-  </div>
-  <div class="field">
-    <label>Reviewed By</label>
-    <img src="" id="img2">
-    <button class="signBtn" data-title="Sign Field 2" data-index="2">Sign</button>
-  </div>
-  <div class="field">
-    <label>Approved By</label>
-    <img src="" id="img3">
-    <button class="signBtn" data-title="Sign Field 3" data-index="3">Sign</button>
-  </div>
-  <div class="field">
-    <label>Confirmed By</label>
-    <img src="" id="img4">
-    <button class="signBtn" data-title="Sign Field 4" data-index="4">Sign</button>
+  <div class="d-flex flex-column gap-3">
+
+    <!-- Row 1 -->
+    <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
+      <img src="" id="sig-img1" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
+      <button class="btn btn-primary sign-btn" data-title="Sign Field 1" data-index="1" data-toggle="modal" data-target="#sigModal">Sign</button>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
+      <img src="" id="sig-img2" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
+      <button class="btn btn-primary sign-btn" data-title="Sign Field 2" data-index="2" data-toggle="modal" data-target="#sigModal">Sign</button>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
+      <img src="" id="sig-img3" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
+      <button class="btn btn-primary sign-btn" data-title="Sign Field 3" data-index="3" data-toggle="modal" data-target="#sigModal">Sign</button>
+    </div>
+
+    <!-- Row 4 -->
+    <div class="d-flex align-items-center justify-content-between bg-white shadow-sm p-3 rounded">
+      <img src="" id="sig-img4" class="border rounded" style="width:60px;height:60px;object-fit:cover;">
+      <button class="btn btn-primary sign-btn" data-title="Sign Field 4" data-index="4" data-toggle="modal" data-target="#sigModal">Sign</button>
+    </div>
+
   </div>
 </div>
 
-<!-- ===== Modal ===== -->
-<div id="modalBackdrop" class="modal-backdrop">
-  <div id="customModal" class="modal">
-    
-    <div id="modalTitle" class="modal-header">Modal Title</div>
-    
-    <div class="modal-body">
-      Please confirm your signature for this field.
-    </div>
-    
-    <div class="modal-footer">
-      <button id="applyBtn" class="btn btn-apply">Apply</button>
-      <button id="cancelBtn" class="btn btn-cancel">Cancel</button>
+<!-- ===== Bootstrap Modal ===== -->
+<div class="modal" id="sigModal" tabindex="-1" role="dialog" aria-labelledby="sigModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="sigModalTitle">Digital Signature Pad</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex flex-wrap justify-content-center align-items-center">
+            <button id="brushBtn" data-tool="brush" class="control-button tool-button active btn btn btn-primary btn-icon m-2" title="Brush Tool">
+                <i class="fas fa-pen"></i>
+            </button>
+
+            <button id="eraserBtn" data-tool="eraser" class="control-button tool-button btn btn-danger btn-icon m-2" title="Eraser Tool">
+                <i class="fas fa-eraser"></i>
+            </button>
+
+            <div class="dropdown m-2 align-self-center">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="tipDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Brush Tip Shape">
+                    Tip: <span id="currentTipText" class="ml-2 font-weight-bold">Round</span>
+                </button>
+                <div class="dropdown-menu" aria-labelledby="tipDropdown">
+                    <a class="dropdown-item" href="#" data-tip="round">
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #000; display: inline-block; margin-right: 8px;"></div>
+                        Round
+                    </a>
+                    <a class="dropdown-item" href="#" data-tip="square">
+                        <div style="width: 12px; height: 12px; background-color: #000; display: inline-block; margin-right: 8px;"></div>
+                        Square
+                    </a>
+                </div>
+            </div>
+
+            <input type="color" id="colorPicker" value="#000000" class="form-control form-control-color m-2" style="width: 48px; cursor: pointer;" title="Brush Color">
+
+            <input type="range" id="sizeSlider" min="2" max="50" value="10" class="custom-range align-self-center m-2" style="width: 100px; height: 48px;" title="Brush Size">
+            <span id="sizeValue" class="h5 font-weight-semibold align-self-center text-center m-2" style="min-width: 30px;">10</span>
+
+            <button id="undoBtn" class="btn btn-secondary btn-icon m-2" title="Undo" disabled>
+                <i class="fas fa-undo"></i>
+            </button>
+            
+            <button id="redoBtn" class="btn btn-secondary btn-icon m-2" title="Redo" disabled>
+                <i class="fas fa-redo"></i>
+            </button>
+
+            <button id="clearBtn" class="btn btn-light btn-icon text-dark m-2" title="Clear Canvas">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+
+            <div class="dropdown m-2 align-self-center">
+                <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="Export Drawing">
+                    <i class="fas fa-download mr-2"></i> Export
+                </button>
+                <div class="exportDropdown dropdown-menu" aria-labelledby="exportDropdown">
+                    <a class="dropdown-item" href="#" data-export="png_white">PNG (White Background)</a>
+                    <a class="dropdown-item" href="#" data-export="jpeg">JPEG (White Background)</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="#" data-export="png_transparent">PNG (Transparent)</a>
+                </div>
+            </div>
+        </div>
+
+    <div class="canvas-container mt-2">
+        <canvas id="drawingCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
     </div>
 
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="applyBtn" class="btn btn-primary">Apply</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-const modalBackdrop = document.getElementById('modalBackdrop');
-const modal = document.getElementById('customModal');
-const modalTitle = document.getElementById('modalTitle');
-const applyBtn = document.getElementById('applyBtn');
-const cancelBtn = document.getElementById('cancelBtn');
 let activeIndex = null;
 
-// Open modal
-document.querySelectorAll('.signBtn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    activeIndex = btn.dataset.index;
-    modalTitle.textContent = btn.dataset.title || "Sign Field";
-    modalBackdrop.classList.add('show');
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
-  });
+// Open modal with correct title
+$('#sigModal').on('show.bs.modal', function (event) {
+  const button = $(event.relatedTarget);
+  activeIndex = button.data('index');
+  const title = button.data('title') || "Sign Field";
+  $('#sigModalTitle').text(title);
 });
 
-// Close modal
-function closeModal() {
-  modalBackdrop.classList.remove('show');
-  modal.classList.remove('show');
-  document.body.style.overflow = '';
-}
-
-cancelBtn.addEventListener('click', closeModal);
-modalBackdrop.addEventListener('click', e => {
-  if (e.target === modalBackdrop) closeModal();
-});
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
-});
-
-// Apply button
-applyBtn.addEventListener('click', () => {
+// Apply button logic
+$('#applyBtn').on('click', function() {
   if (!activeIndex) return;
-  const img = document.getElementById('img' + activeIndex);
-  
-  // Example: mark as "signed"
-  img.src = "https://dummyimage.com/60x60/28a745/ffffff&text=✔";
 
-  closeModal();
+  // Get the current canvas as an image
+  const dataURL = drawingCanvas.toDataURL('image/png');
+
+  // Apply to the correct image
+  const img = document.getElementById('sig-img' + activeIndex);
+  img.src = dataURL;
+
+  // Close modal
+  $('#sigModal').modal('hide');
 });
+
+// Initialize canvases only when the modal is fully visible
+        $('#sigModal').on('show.bs.modal', function () {
+  // Hide the canvas visually during fade-in to prevent old signature flicker
+  $('.canvas-container').css('opacity', 0);
+
+  // Clear immediately before fade animation begins
+  if (ctx && drawingCanvas.width > 0 && drawingCanvas.height > 0) {
+    ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    history = [];
+    historyIndex = -1;
+    saveState();
+  }
+});
+
+$('#sigModal').on('shown.bs.modal', function () {
+  initializeCanvases();
+  // Fade back the canvas container
+  $('.canvas-container').css('opacity', 1);
+});
+
 </script>
+
+<script>
+        // IMPORTANT VARIABLES AND ELEMENTS
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const ctx = drawingCanvas.getContext('2d');
+        const overlayCtx = overlayCanvas.getContext('2d');
+        const sizeValueSpan = document.getElementById('sizeValue');
+        // Control Buttons
+        const toolButtons = document.querySelectorAll('.tool-button');
+        const tipDropdownItems = document.querySelectorAll('.dropdown-menu a[data-tip]');
+        const currentTipText = document.getElementById('currentTipText');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        // State variables
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentTool = 'brush'; // 'brush' or 'eraser'
+        let brushTip = 'round'; // 'round' or 'square'
+        let brushColor = '#000000';
+        let brushSize = 10;
+
+        // Initializes the canvas sizes to fill the container and sets up event listeners
+        function initializeCanvases() {
+            const container = drawingCanvas.parentElement;
+            const updateCanvasDimensions = () => {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                // Capture current state index before resize
+                const currentIdx = historyIndex;
+                // Save current pixel state to avoid losing content during resize
+                let currentEntry = null;
+                if (currentIdx > -1 && history[currentIdx]) {
+                    currentEntry = history[currentIdx];
+                }
+                // Resize canvases
+                drawingCanvas.width = width;
+                drawingCanvas.height = height;
+                overlayCanvas.width = width;
+                overlayCanvas.height = height;
+                // If we had a saved current entry, restore it (this will scale it if needed)
+                if (currentEntry) {
+                    restoreHistoryEntry(currentEntry);
+                } else {
+                    // Start with a blank canvas and save initial state
+                    ctx.clearRect(0, 0, width, height);
+                    saveState();
+                }
+                // Set initial context properties after resizing
+                ctx.lineJoin = 'round';
+            };
+            // Set initial dimensions and listen for resize events
+            updateCanvasDimensions();
+            window.addEventListener('resize', updateCanvasDimensions);
+        }
+
+        // HISTORY MANAGEMENT VARIABLES AND FUNCTIONS
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY_SIZE = 25; // Limit history size to prevent memory issues
+
+        function restoreDrawingCanvas(dataURL) {
+            const width = drawingCanvas.width;
+            const height = drawingCanvas.height;
+            const img = new Image();
+            img.onload = () => {
+                // Clear the main canvas completely to transparent
+                ctx.clearRect(0, 0, width, height);
+                // Set the composite operation back to default before drawing the image
+                ctx.globalCompositeOperation = 'source-over';
+                // Draw the historical image (which contains the white background)
+                ctx.drawImage(img, 0, 0, width, height);
+                updateUndoRedoButtons();
+            };
+            img.src = dataURL;
+        }
+
+        function saveState() {
+            // if there's redo states after current index, drop them
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+
+            const w = drawingCanvas.width;
+            const h = drawingCanvas.height;
+            // Get the image data (preserves alpha)
+            const imageData = ctx.getImageData(0, 0, w, h);
+            // Push a clone of ImageData to avoid referencing the same buffer
+            // Note: ImageData's data is a typed array; we clone it.
+            const cloned = new ImageData(new Uint8ClampedArray(imageData.data), imageData.width, imageData.height);
+            history.push({ imageData: cloned, width: w, height: h });
+            historyIndex++;
+            // Trim history to keep it within MAX_HISTORY_SIZE
+            if (history.length > MAX_HISTORY_SIZE) {
+                history.shift();
+                historyIndex--;
+            }
+            updateUndoRedoButtons();
+        }
+
+        // Restore a saved ImageData state (handles size mismatch by scaling)
+        function restoreHistoryEntry(entry) {
+            if (!entry) return;
+
+            const w = drawingCanvas.width;
+            const h = drawingCanvas.height;
+
+            // If entry size exactly matches current canvas size, putImageData directly
+            if (entry.width === w && entry.height === h) {
+                ctx.putImageData(entry.imageData, 0, 0);
+                updateUndoRedoButtons();
+                return;
+            }
+
+            // Otherwise, draw to a temporary canvas and scale to current canvas
+            const tmp = document.createElement('canvas');
+            tmp.width = entry.width;
+            tmp.height = entry.height;
+            const tmpCtx = tmp.getContext('2d');
+            // Put the ImageData on temp canvas
+            tmpCtx.putImageData(entry.imageData, 0, 0);
+            // Clear main canvas then draw scaled image onto it
+            ctx.clearRect(0, 0, w, h);
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.drawImage(tmp, 0, 0, w, h);
+
+            updateUndoRedoButtons();
+        }
+
+        // Loads a canvas state from the history array.
+        function loadState(index) {
+            if (index >= 0 && index < history.length) {
+                historyIndex = index;
+                restoreDrawingCanvas(history[historyIndex]);
+            }
+        }
+
+        // Load a history state by index
+        function loadState(index) {
+            if (index >= 0 && index < history.length) {
+                historyIndex = index;
+                const entry = history[historyIndex];
+                restoreHistoryEntry(entry);
+            }
+        }
+
+        // Enables/Disables the Undo/Redo buttons based on the current history index.
+        function updateUndoRedoButtons() {
+            if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+            if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+        }
+
+        // CURSOR DRAWING LOGIC
+        // Clears the cursor drawn on the overlay canvas.
+        function clearCursorOverlay() {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        }
+
+        // Draws the custom cursor on the overlay canvas, reflecting size and tip shape.
+        function drawCursor(x, y) {
+            clearCursorOverlay();
+
+            // Set styles for the cursor outline
+            overlayCtx.strokeStyle = currentTool === 'brush' ? brushColor : '#f87171'; // Red for eraser
+            overlayCtx.lineWidth = 2;
+            overlayCtx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // Semi-transparent fill
+
+            const halfSize = brushSize / 2;
+
+            overlayCtx.beginPath();
+            if (brushTip === 'round') {
+                // Round Tip Cursor: Draw a circle
+                overlayCtx.arc(x, y, halfSize, 0, Math.PI * 2);
+            } else {
+                // Square Tip Cursor: Draw a rectangle
+                overlayCtx.rect(x - halfSize, y - halfSize, brushSize, brushSize);
+            }
+            overlayCtx.fill();
+            overlayCtx.stroke();
+        }
+
+        // DRAWING LOGIC
+        
+        // Main drawing function. Determines whether to use line or stamp based on tip.
+        function draw(x, y) {
+            if (!isDrawing) return;
+
+            // Use simple lineTo for round, and the stamping method for square tips 
+            const useStamping = brushTip === 'square';
+
+            if (useStamping) {
+                drawStamp(x, y);
+            } else {
+                drawSimpleLine(x, y);
+            }
+
+            // Update last position
+            [lastX, lastY] = [x, y];
+        }
+
+        
+        // Sets drawing parameters and draws a standard lineTo stroke (for round brush/eraser).
+        function drawSimpleLine(x, y) {
+            // Set global composite operation for brush/eraser
+            ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
+
+            // Only set strokeStyle if we are brushing (harmless for eraser, but cleaner)
+            if (currentTool === 'brush') {
+                ctx.strokeStyle = brushColor;
+            } else {
+                // For eraser, the strokeStyle is irrelevant, but we ensure line properties are set
+                ctx.strokeStyle = '#000000';
+            }
+
+            ctx.lineWidth = brushSize;
+            ctx.lineCap = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        // Sets drawing parameters and draws a segment as a series of squares (for square tips).
+        function drawStamp(x, y) {
+            const dx = x - lastX;
+            const dy = y - lastY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            // Stamping frequency: Based on size to avoid gaps
+            const steps = Math.max(1, Math.ceil(distance / (brushSize * 0.5)));
+
+            const stepX = dx / steps;
+            const stepY = dy / steps;
+
+            const halfSize = brushSize / 2;
+
+            // Set global composite operation and fill style
+            ctx.globalCompositeOperation = currentTool === 'brush' ? 'source-over' : 'destination-out';
+            ctx.fillStyle = brushColor;
+
+            // Draw a series of squares along the path
+            for (let i = 0; i <= steps; i++) {
+                const currentX = lastX + stepX * i;
+                const currentY = lastY + stepY * i;
+                // Draw a square stamp centered at (currentX, currentY)
+                ctx.fillRect(currentX - halfSize, currentY - halfSize, brushSize, brushSize);
+            }
+        }
+
+        // CONTROL EVENT LISTENERS
+
+        // Tool Selection (Brush/Eraser)
+        toolButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tool = button.getAttribute('data-tool');
+                currentTool = tool;
+                // Update active button styling
+                toolButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            });
+            // Set initial active state for the brush
+            if (button.getAttribute('data-tool') === 'brush') {
+                button.classList.add('active');
+            }
+        });
+
+        // Tip Selection (Dropdown)
+        tipDropdownItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                brushTip = item.getAttribute('data-tip');
+                currentTipText.textContent = brushTip.charAt(0).toUpperCase() + brushTip.slice(1);
+            });
+        });
+
+        // Color Picker
+        document.getElementById('colorPicker').addEventListener('input', (e) => {
+            brushColor = e.target.value;
+        });
+
+        // Size Slider
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            sizeValueSpan.textContent = brushSize;
+        });
+
+        // Clear Canvas Button
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            // Ensure composite operation is source-over before clearing the whole thing
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            saveState();
+        });
+
+        // Undo Button
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+                if (historyIndex > 0) {
+                    loadState(historyIndex - 1);
+                }
+            });
+        }
+
+        // Redo Button
+        if (redoBtn) {
+            redoBtn.addEventListener('click', () => {
+                if (historyIndex < history.length - 1) {
+                    loadState(historyIndex + 1);
+                }
+            });
+        }
+
+
+        // Export Dropdown Listener
+        document.querySelector('.exportDropdown').addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('[data-export]');
+            if (!target) return;
+            const exportType = target.getAttribute('data-export');
+
+            const downloadImage = (url, filename) => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+
+            // Create white-background data URL from current canvas (without changing actual canvas)
+            const getWhiteBackgroundDataURL = (mimeType = 'image/png') => {
+                const tmp = document.createElement('canvas');
+                tmp.width = drawingCanvas.width;
+                tmp.height = drawingCanvas.height;
+                const tmpCtx = tmp.getContext('2d');
+
+                // Fill white background then draw the main canvas on top (preserves alpha drawn over white)
+                tmpCtx.fillStyle = '#ffffff';
+                tmpCtx.fillRect(0, 0, tmp.width, tmp.height);
+                tmpCtx.drawImage(drawingCanvas, 0, 0);
+                return tmp.toDataURL(mimeType, 1.0);
+            };
+
+            let url = '';
+            let filename = '';
+
+            if (exportType === 'png_white') {
+                url = getWhiteBackgroundDataURL('image/png');
+                filename = 'signature_white_bg.png';
+            } else if (exportType === 'png_transparent') {
+                // Transparent export: get the canvas as-is (alpha preserved)
+                url = drawingCanvas.toDataURL('image/png', 1.0);
+                filename = 'signature_transparent.png';
+            } else if (exportType === 'jpeg') {
+                url = getWhiteBackgroundDataURL('image/jpeg');
+                filename = 'signature.jpeg';
+            }
+
+            if (url) downloadImage(url, filename);
+        });
+
+        // Canvas Interaction Listeners: Mouse & Touch
+
+        // Calculates coordinates for both mouse and touch events.
+        function getCoords(e) {
+            const rect = drawingCanvas.getBoundingClientRect();
+            // Check for touch event first
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top,
+                isTouch: !!e.touches
+            };
+        }
+
+        // 1. Handle pointer down (Mouse & Touch Start)
+        const startDrawing = (e) => {
+            const { x, y } = getCoords(e);
+            // For touch events, prevent default behavior (like scrolling/zooming)
+            if (e.touches) {
+                e.preventDefault();
+            }
+            // Only respond to left click (mouse button 0) or touch
+            if (e.button !== 0 && !e.touches) return;
+
+            isDrawing = true;
+            [lastX, lastY] = [x, y];
+
+            // Draw initial stamp for a click/dot
+            if (brushTip === 'square') {
+                drawStamp(lastX, lastY);
+            } else {
+                drawSimpleLine(lastX, lastY);
+            }
+
+            // Remove cursor on drawing start
+            clearCursorOverlay();
+        };
+
+        // 2. Handle pointer move (Mouse & Touch Move)
+        const moveDrawing = (e) => {
+            const { x, y, isTouch } = getCoords(e);
+
+            if (isTouch) {
+                e.preventDefault();
+            }
+
+            // Only draw cursor for mouse, as touch devices don't benefit from it
+            if (!isTouch) {
+                drawCursor(x, y);
+            }
+
+            if (isDrawing) {
+                draw(x, y);
+            }
+        };
+
+        // 3. Handle pointer up and leave (Mouse & Touch End/Leave)
+        const stopDrawing = (e) => {
+            // Only save state if we were actually drawing
+            if (isDrawing) {
+                saveState();
+            }
+            isDrawing = false;
+        };
+
+        // Listener Assignments
+        drawingCanvas.addEventListener('mousedown', startDrawing);
+        drawingCanvas.addEventListener('mousemove', moveDrawing);
+        drawingCanvas.addEventListener('mouseup', stopDrawing);
+        drawingCanvas.addEventListener('mouseleave', () => {
+            stopDrawing();
+            clearCursorOverlay(); // Remove cursor when mouse leaves the canvas area
+        });
+
+        // Touch Listeners
+        drawingCanvas.addEventListener('touchstart', startDrawing);
+        drawingCanvas.addEventListener('touchmove', moveDrawing);
+        drawingCanvas.addEventListener('touchend', stopDrawing);
+
+        // Initialize everything on load
+        // window.onload = initializeCanvases;
+
+    </script>
+
 </body>
 </html>
